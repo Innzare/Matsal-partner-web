@@ -35,8 +35,8 @@ export const useAuthStore = defineStore("auth", () => {
     error.value = null;
 
     try {
-      // MOCK AUTH - для тестирования без бэкенда
-      if (import.meta.env.DEV && !import.meta.env.VITE_API_URL) {
+      // MOCK AUTH - если нет бэкенда
+      if (!import.meta.env.VITE_API_URL) {
         // Имитация задержки сети
         await new Promise((resolve) => setTimeout(resolve, 1000));
 
