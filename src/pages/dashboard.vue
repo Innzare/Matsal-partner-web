@@ -624,7 +624,7 @@ const reviews = [
 
     <!-- ═══ 6 KPI Cards ═══ -->
     <v-row dense class="mb-6">
-      <v-col v-for="kpi in kpiCards" :key="kpi.label" cols="6" md="4" lg="2">
+      <v-col v-for="kpi in kpiCards" :key="kpi.label" cols="12" md="4" lg="4">
         <v-card flat rounded="xl" class="pa-4 h-100">
           <div class="d-flex align-center justify-space-between mb-3">
             <div
