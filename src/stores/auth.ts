@@ -135,8 +135,8 @@ export const useAuthStore = defineStore("auth", () => {
     }
 
     try {
-      // MOCK AUTH - для тестирования без бэкенда
-      if (import.meta.env.DEV && !import.meta.env.VITE_API_URL) {
+      // MOCK AUTH - если нет бэкенда
+      if (!import.meta.env.VITE_API_URL) {
         token.value = savedToken;
         user.value = JSON.parse(savedUser);
         return true;

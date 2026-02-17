@@ -1,5 +1,5 @@
 const API_URL = import.meta.env.VITE_API_URL as string | undefined
-const IS_MOCK = import.meta.env.DEV && !API_URL
+const IS_MOCK = !API_URL
 
 export { IS_MOCK }
 
