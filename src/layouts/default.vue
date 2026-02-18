@@ -380,7 +380,16 @@ const confirmLogout = async () => {
   </v-responsive>
 </template>
 
-<style scoped>
+<style lang="scss">
+.lyt-sidebar {
+  .v-navigation-drawer__content {
+    display: flex !important;
+    flex-direction: column !important;
+  }
+}
+</style>
+
+<style scoped lang="scss">
 /* ===== SIDEBAR ===== */
 .lyt-sidebar {
   background: #fff !important;
@@ -565,6 +574,7 @@ const confirmLogout = async () => {
   display: flex;
   align-items: center;
   gap: 12px;
+  width: 100%;
   padding: 8px 12px;
   border-radius: 10px;
   border: none;
