@@ -1,43 +1,62 @@
 <script lang="ts" setup>
-import { useRestaurantStore } from '@/stores/restaurant'
-import { useAuthStore } from '@/stores/auth'
-import type { WeekDay } from '@/types'
-import { WEEKDAY_LABELS } from '@/types'
+import { useRestaurantStore } from "@/stores/restaurant";
+import { useAuthStore } from "@/stores/auth";
+import type { WeekDay } from "@/types";
+import { WEEKDAY_LABELS } from "@/types";
 
-const restaurantStore = useRestaurantStore()
-const authStore = useAuthStore()
+const restaurantStore = useRestaurantStore();
+const authStore = useAuthStore();
 
-const activeTab = ref(0)
-const snackbar = ref(false)
-const snackbarText = ref('')
-const snackbarColor = ref('green')
+const activeTab = ref(0);
+const snackbar = ref(false);
+const snackbarText = ref("");
+const snackbarColor = ref("green");
 
 // ── Profile form ──
 const form = ref({
-  name: '',
-  description: '',
-  address: '',
-  phone: '',
-  coverImage: '',
-  deliveryTime: '',
+  name: "",
+  description: "",
+  address: "",
+  phone: "",
+  coverImage: "",
+  deliveryTime: "",
   minOrderAmount: 0,
   cuisineTypes: [] as string[],
   workingHours: Object.fromEntries(
-    (['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as WeekDay[]).map(d => [d, { open: '10:00', close: '22:00', isOpen: true }])
+    (
+      [
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+        "saturday",
+        "sunday",
+      ] as WeekDay[]
+    ).map((d) => [d, { open: "10:00", close: "22:00", isOpen: true }]),
   ) as Record<WeekDay, { open: string; close: string; isOpen: boolean }>,
-})
+});
 
-const weekDays = Object.keys(WEEKDAY_LABELS) as WeekDay[]
+const weekDays = Object.keys(WEEKDAY_LABELS) as WeekDay[];
 
 const cuisineOptions = [
-  'Грузинская', 'Кавказская', 'Европейская', 'Итальянская',
-  'Японская', 'Китайская', 'Фастфуд', 'Домашняя кухня',
-  'Выпечка', 'Десерты', 'Здоровая еда', 'Халяль',
-]
+  "Грузинская",
+  "Кавказская",
+  "Европейская",
+  "Итальянская",
+  "Японская",
+  "Китайская",
+  "Фастфуд",
+  "Домашняя кухня",
+  "Выпечка",
+  "Десерты",
+  "Здоровая еда",
+  "Халяль",
+];
 
 // ── Delivery form ──
 const deliveryForm = ref({
-  deliveryTime: '',
+  deliveryTime: "",
   minOrderAmount: 0,
   deliveryFee: 100,
   freeDeliveryFrom: 1500,
@@ -45,7 +64,7 @@ const deliveryForm = ref({
   deliveryEnabled: true,
   pickupEnabled: true,
   dineInEnabled: true,
-})
+});
 
 // ── Notification prefs ──
 const notifPrefs = ref({
@@ -58,54 +77,55 @@ const notifPrefs = ref({
   sound: true,
   browserPush: false,
   email: true,
-  emailAddress: '',
+  emailAddress: "",
   telegram: false,
-  telegramChatId: '',
-})
+  telegramChatId: "",
+});
 
 // ── Security ──
 const securityForm = ref({
-  currentPassword: '',
-  newPassword: '',
-  confirmPassword: '',
-})
-const showCurrentPassword = ref(false)
-const showNewPassword = ref(false)
-const showConfirmPassword = ref(false)
-const passwordFormRef = ref()
+  currentPassword: "",
+  newPassword: "",
+  confirmPassword: "",
+});
+const showCurrentPassword = ref(false);
+const showNewPassword = ref(false);
+const showConfirmPassword = ref(false);
+const passwordFormRef = ref();
 
 const passwordRules = {
-  current: [(v: string) => !!v || 'Введите текущий пароль'],
+  current: [(v: string) => !!v || "Введите текущий пароль"],
   new: [
-    (v: string) => !!v || 'Введите новый пароль',
-    (v: string) => v.length >= 8 || 'Минимум 8 символов',
-    (v: string) => /[A-Z]/.test(v) || 'Нужна хотя бы одна заглавная буква',
-    (v: string) => /[0-9]/.test(v) || 'Нужна хотя бы одна цифра',
+    (v: string) => !!v || "Введите новый пароль",
+    (v: string) => v.length >= 8 || "Минимум 8 символов",
+    (v: string) => /[A-Z]/.test(v) || "Нужна хотя бы одна заглавная буква",
+    (v: string) => /[0-9]/.test(v) || "Нужна хотя бы одна цифра",
   ],
   confirm: [
-    (v: string) => !!v || 'Подтвердите пароль',
-    (v: string) => v === securityForm.value.newPassword || 'Пароли не совпадают',
+    (v: string) => !!v || "Подтвердите пароль",
+    (v: string) =>
+      v === securityForm.value.newPassword || "Пароли не совпадают",
   ],
-}
+};
 
 // ── Tabs config ──
 const tabs = [
-  { icon: 'mdi-store', label: 'Профиль' },
-  { icon: 'mdi-truck-delivery', label: 'Доставка' },
-  { icon: 'mdi-clock-outline', label: 'Расписание' },
-  { icon: 'mdi-bell-outline', label: 'Уведомления' },
-  { icon: 'mdi-shield-lock-outline', label: 'Безопасность' },
-]
+  { icon: "mdi-store", label: "Профиль" },
+  { icon: "mdi-truck-delivery", label: "Доставка" },
+  { icon: "mdi-clock-outline", label: "Расписание" },
+  { icon: "mdi-bell-outline", label: "Уведомления" },
+  { icon: "mdi-shield-lock-outline", label: "Безопасность" },
+];
 
 // ── Init ──
 onMounted(async () => {
-  await restaurantStore.loadRestaurant()
-  syncForm()
-})
+  await restaurantStore.loadRestaurant();
+  syncForm();
+});
 
 function syncForm() {
-  const r = restaurantStore.restaurant
-  if (!r) return
+  const r = restaurantStore.restaurant;
+  if (!r) return;
   form.value = {
     name: r.name,
     description: r.description,
@@ -116,16 +136,16 @@ function syncForm() {
     minOrderAmount: r.minOrderAmount,
     cuisineTypes: [...r.cuisineTypes],
     workingHours: structuredClone(r.workingHours),
-  }
-  deliveryForm.value.deliveryTime = r.deliveryTime
-  deliveryForm.value.minOrderAmount = r.minOrderAmount
-  notifPrefs.value.emailAddress = authStore.user?.email || ''
+  };
+  deliveryForm.value.deliveryTime = r.deliveryTime;
+  deliveryForm.value.minOrderAmount = r.minOrderAmount;
+  notifPrefs.value.emailAddress = authStore.user?.email || "";
 }
 
-function showSnack(text: string, color = 'green') {
-  snackbarText.value = text
-  snackbarColor.value = color
-  snackbar.value = true
+function showSnack(text: string, color = "green") {
+  snackbarText.value = text;
+  snackbarColor.value = color;
+  snackbar.value = true;
 }
 
 async function saveProfile() {
@@ -136,52 +156,60 @@ async function saveProfile() {
     phone: form.value.phone,
     coverImage: form.value.coverImage,
     cuisineTypes: form.value.cuisineTypes,
-  })
-  showSnack('Профиль сохранён')
+  });
+  showSnack("Профиль сохранён");
 }
 
 async function saveDelivery() {
   await restaurantStore.updateRestaurant({
     deliveryTime: deliveryForm.value.deliveryTime,
     minOrderAmount: deliveryForm.value.minOrderAmount,
-  })
-  showSnack('Настройки доставки сохранены')
+  });
+  showSnack("Настройки доставки сохранены");
 }
 
 async function saveSchedule() {
   await restaurantStore.updateRestaurant({
     workingHours: form.value.workingHours,
-  })
-  showSnack('Расписание сохранено')
+  });
+  showSnack("Расписание сохранено");
 }
 
 async function toggleOpen() {
-  await restaurantStore.toggleOpen()
-  showSnack(restaurantStore.restaurant?.isOpen ? 'Заведение открыто' : 'Заведение закрыто')
+  await restaurantStore.toggleOpen();
+  showSnack(
+    restaurantStore.restaurant?.isOpen
+      ? "Заведение открыто"
+      : "Заведение закрыто",
+  );
 }
 
 async function saveNotifications() {
-  await new Promise(r => setTimeout(r, 400))
-  showSnack('Уведомления сохранены')
+  await new Promise((r) => setTimeout(r, 400));
+  showSnack("Уведомления сохранены");
 }
 
 async function changePassword() {
-  const { valid } = await passwordFormRef.value.validate()
-  if (!valid) return
-  await new Promise(r => setTimeout(r, 600))
-  securityForm.value = { currentPassword: '', newPassword: '', confirmPassword: '' }
-  passwordFormRef.value.reset()
-  showSnack('Пароль изменён')
+  const { valid } = await passwordFormRef.value.validate();
+  if (!valid) return;
+  await new Promise((r) => setTimeout(r, 600));
+  securityForm.value = {
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  };
+  passwordFormRef.value.reset();
+  showSnack("Пароль изменён");
 }
 
 function copyAllSchedule(sourceDay: WeekDay) {
-  const source = form.value.workingHours[sourceDay]
+  const source = form.value.workingHours[sourceDay];
   for (const day of weekDays) {
     if (day !== sourceDay) {
-      form.value.workingHours[day] = { ...source }
+      form.value.workingHours[day] = { ...source };
     }
   }
-  showSnack('Расписание скопировано на все дни')
+  showSnack("Расписание скопировано на все дни");
 }
 </script>
 
@@ -198,13 +226,14 @@ function copyAllSchedule(sourceDay: WeekDay) {
           <h1 class="settings-header__title">Настройки</h1>
           <p class="settings-header__sub">Управление заведением и профилем</p>
         </div>
+
         <div class="d-flex align-center ga-3">
           <v-chip
             :color="restaurantStore.restaurant.isOpen ? 'green' : 'red'"
             variant="flat"
             size="small"
           >
-            {{ restaurantStore.restaurant.isOpen ? 'Открыто' : 'Закрыто' }}
+            {{ restaurantStore.restaurant.isOpen ? "Открыто" : "Закрыто" }}
           </v-chip>
           <v-switch
             :model-value="restaurantStore.restaurant.isOpen"
@@ -237,7 +266,9 @@ function copyAllSchedule(sourceDay: WeekDay) {
           <!-- TAB 0: Profile -->
           <div v-show="activeTab === 0" class="settings-section">
             <div class="section-title">Информация о заведении</div>
-            <div class="section-desc">Основные данные вашего ресторана, видимые клиентам</div>
+            <div class="section-desc">
+              Основные данные вашего ресторана, видимые клиентам
+            </div>
 
             <v-card flat rounded="xl" class="pa-6 mb-5">
               <div class="d-flex ga-6 mb-5" style="align-items: start">
@@ -253,7 +284,9 @@ function copyAllSchedule(sourceDay: WeekDay) {
                     class="settings-cover__img"
                   >
                     <template v-slot:error>
-                      <div class="d-flex align-center justify-center bg-grey-lighten-3 h-100">
+                      <div
+                        class="d-flex align-center justify-center bg-grey-lighten-3 h-100"
+                      >
                         <v-icon icon="mdi-image-off" size="32" color="grey" />
                       </div>
                     </template>
@@ -291,7 +324,9 @@ function copyAllSchedule(sourceDay: WeekDay) {
                     rows="3"
                     class="mb-4"
                     counter="500"
-                    :rules="[(v: string) => v.length <= 500 || 'Максимум 500 символов']"
+                    :rules="[
+                      (v: string) => v.length <= 500 || 'Максимум 500 символов',
+                    ]"
                   />
 
                   <div class="d-flex ga-4 mb-4">
@@ -334,13 +369,27 @@ function copyAllSchedule(sourceDay: WeekDay) {
               <v-divider class="mb-4" />
               <div class="d-flex ga-6 align-center">
                 <div class="settings-stat">
-                  <v-icon icon="mdi-star" color="amber" size="18" class="mr-1" />
-                  <span class="settings-stat__value">{{ restaurantStore.restaurant.rating }}</span>
+                  <v-icon
+                    icon="mdi-star"
+                    color="amber"
+                    size="18"
+                    class="mr-1"
+                  />
+                  <span class="settings-stat__value">{{
+                    restaurantStore.restaurant.rating
+                  }}</span>
                   <span class="settings-stat__label">рейтинг</span>
                 </div>
                 <div class="settings-stat">
-                  <v-icon icon="mdi-comment-text-outline" color="primary" size="18" class="mr-1" />
-                  <span class="settings-stat__value">{{ restaurantStore.restaurant.reviewsCount }}</span>
+                  <v-icon
+                    icon="mdi-comment-text-outline"
+                    color="primary"
+                    size="18"
+                    class="mr-1"
+                  />
+                  <span class="settings-stat__value">{{
+                    restaurantStore.restaurant.reviewsCount
+                  }}</span>
                   <span class="settings-stat__label">отзывов</span>
                 </div>
                 <v-spacer />
@@ -360,7 +409,9 @@ function copyAllSchedule(sourceDay: WeekDay) {
           <!-- TAB 1: Delivery -->
           <div v-show="activeTab === 1" class="settings-section">
             <div class="section-title">Доставка и заказы</div>
-            <div class="section-desc">Параметры доставки, самовывоза и обслуживания</div>
+            <div class="section-desc">
+              Параметры доставки, самовывоза и обслуживания
+            </div>
 
             <!-- Order types -->
             <v-card flat rounded="xl" class="pa-6 mb-5">
@@ -373,10 +424,17 @@ function copyAllSchedule(sourceDay: WeekDay) {
                     </v-avatar>
                     <div>
                       <p class="font-weight-medium">Доставка</p>
-                      <p class="text-caption text-grey">Доставка курьером до двери</p>
+                      <p class="text-caption text-grey">
+                        Доставка курьером до двери
+                      </p>
                     </div>
                   </div>
-                  <v-switch v-model="deliveryForm.deliveryEnabled" color="green" hide-details density="compact" />
+                  <v-switch
+                    v-model="deliveryForm.deliveryEnabled"
+                    color="green"
+                    hide-details
+                    density="compact"
+                  />
                 </div>
 
                 <v-divider />
@@ -388,10 +446,17 @@ function copyAllSchedule(sourceDay: WeekDay) {
                     </v-avatar>
                     <div>
                       <p class="font-weight-medium">Самовывоз</p>
-                      <p class="text-caption text-grey">Клиент забирает заказ сам</p>
+                      <p class="text-caption text-grey">
+                        Клиент забирает заказ сам
+                      </p>
                     </div>
                   </div>
-                  <v-switch v-model="deliveryForm.pickupEnabled" color="green" hide-details density="compact" />
+                  <v-switch
+                    v-model="deliveryForm.pickupEnabled"
+                    color="green"
+                    hide-details
+                    density="compact"
+                  />
                 </div>
 
                 <v-divider />
@@ -403,17 +468,26 @@ function copyAllSchedule(sourceDay: WeekDay) {
                     </v-avatar>
                     <div>
                       <p class="font-weight-medium">В зале</p>
-                      <p class="text-caption text-grey">Обслуживание в ресторане</p>
+                      <p class="text-caption text-grey">
+                        Обслуживание в ресторане
+                      </p>
                     </div>
                   </div>
-                  <v-switch v-model="deliveryForm.dineInEnabled" color="green" hide-details density="compact" />
+                  <v-switch
+                    v-model="deliveryForm.dineInEnabled"
+                    color="green"
+                    hide-details
+                    density="compact"
+                  />
                 </div>
               </div>
             </v-card>
 
             <!-- Delivery params -->
             <v-card flat rounded="xl" class="pa-6 mb-5">
-              <p class="text-subtitle-1 font-weight-bold mb-4">Параметры доставки</p>
+              <p class="text-subtitle-1 font-weight-bold mb-4">
+                Параметры доставки
+              </p>
               <div class="d-flex flex-wrap ga-4">
                 <v-text-field
                   v-model="deliveryForm.deliveryTime"
@@ -486,7 +560,9 @@ function copyAllSchedule(sourceDay: WeekDay) {
           <!-- TAB 2: Schedule -->
           <div v-show="activeTab === 2" class="settings-section">
             <div class="section-title">Расписание работы</div>
-            <div class="section-desc">Настройте время работы для каждого дня недели</div>
+            <div class="section-desc">
+              Настройте время работы для каждого дня недели
+            </div>
 
             <v-card flat rounded="xl" class="pa-6 mb-5">
               <!-- Quick actions -->
@@ -495,7 +571,11 @@ function copyAllSchedule(sourceDay: WeekDay) {
                   variant="tonal"
                   size="small"
                   rounded="lg"
-                  @click="weekDays.forEach(d => form.workingHours[d].isOpen = true)"
+                  @click="
+                    weekDays.forEach(
+                      (d) => (form.workingHours[d].isOpen = true),
+                    )
+                  "
                 >
                   Открыть все дни
                 </v-btn>
@@ -504,7 +584,11 @@ function copyAllSchedule(sourceDay: WeekDay) {
                   size="small"
                   rounded="lg"
                   color="grey"
-                  @click="weekDays.slice(5).forEach(d => form.workingHours[d].isOpen = false)"
+                  @click="
+                    weekDays
+                      .slice(5)
+                      .forEach((d) => (form.workingHours[d].isOpen = false))
+                  "
                 >
                   Выходные — выкл
                 </v-btn>
@@ -516,7 +600,9 @@ function copyAllSchedule(sourceDay: WeekDay) {
                   v-for="day in weekDays"
                   :key="day"
                   class="schedule-row"
-                  :class="{ 'schedule-row--off': !form.workingHours[day].isOpen }"
+                  :class="{
+                    'schedule-row--off': !form.workingHours[day].isOpen,
+                  }"
                 >
                   <v-switch
                     v-model="form.workingHours[day].isOpen"
@@ -526,7 +612,9 @@ function copyAllSchedule(sourceDay: WeekDay) {
                     class="schedule-row__switch"
                   />
 
-                  <span class="schedule-row__day">{{ WEEKDAY_LABELS[day] }}</span>
+                  <span class="schedule-row__day">{{
+                    WEEKDAY_LABELS[day]
+                  }}</span>
 
                   <template v-if="form.workingHours[day].isOpen">
                     <v-text-field
@@ -555,10 +643,14 @@ function copyAllSchedule(sourceDay: WeekDay) {
                       @click="copyAllSchedule(day)"
                     >
                       <v-icon icon="mdi-content-copy" size="16" />
-                      <v-tooltip activator="parent" location="top">Скопировать на все дни</v-tooltip>
+                      <v-tooltip activator="parent" location="top"
+                        >Скопировать на все дни</v-tooltip
+                      >
                     </v-btn>
                   </template>
-                  <span v-else class="text-body-2 text-grey ml-2">Выходной</span>
+                  <span v-else class="text-body-2 text-grey ml-2"
+                    >Выходной</span
+                  >
                 </div>
               </div>
 
@@ -579,26 +671,63 @@ function copyAllSchedule(sourceDay: WeekDay) {
           <!-- TAB 3: Notifications -->
           <div v-show="activeTab === 3" class="settings-section">
             <div class="section-title">Уведомления</div>
-            <div class="section-desc">Настройте какие уведомления вы хотите получать</div>
+            <div class="section-desc">
+              Настройте какие уведомления вы хотите получать
+            </div>
 
             <!-- Events -->
             <v-card flat rounded="xl" class="pa-6 mb-5">
               <p class="text-subtitle-1 font-weight-bold mb-4">События</p>
 
-              <div class="notif-row" v-for="item in [
-                { key: 'newOrder', icon: 'mdi-receipt-text', label: 'Новый заказ', desc: 'При поступлении нового заказа' },
-                { key: 'orderStatusChange', icon: 'mdi-swap-horizontal', label: 'Смена статуса', desc: 'Когда заказ меняет статус' },
-                { key: 'newReview', icon: 'mdi-star-outline', label: 'Новый отзыв', desc: 'Когда клиент оставляет отзыв' },
-                { key: 'lowStock', icon: 'mdi-alert-outline', label: 'Стоп-лист', desc: 'Когда позиция скоро закончится' },
-              ]" :key="item.key">
-                <v-avatar :color="(notifPrefs as any)[item.key] ? 'primary' : 'grey-lighten-2'" size="36" variant="tonal">
+              <div
+                class="notif-row"
+                v-for="item in [
+                  {
+                    key: 'newOrder',
+                    icon: 'mdi-receipt-text',
+                    label: 'Новый заказ',
+                    desc: 'При поступлении нового заказа',
+                  },
+                  {
+                    key: 'orderStatusChange',
+                    icon: 'mdi-swap-horizontal',
+                    label: 'Смена статуса',
+                    desc: 'Когда заказ меняет статус',
+                  },
+                  {
+                    key: 'newReview',
+                    icon: 'mdi-star-outline',
+                    label: 'Новый отзыв',
+                    desc: 'Когда клиент оставляет отзыв',
+                  },
+                  {
+                    key: 'lowStock',
+                    icon: 'mdi-alert-outline',
+                    label: 'Стоп-лист',
+                    desc: 'Когда позиция скоро закончится',
+                  },
+                ]"
+                :key="item.key"
+              >
+                <v-avatar
+                  :color="
+                    (notifPrefs as any)[item.key] ? 'primary' : 'grey-lighten-2'
+                  "
+                  size="36"
+                  variant="tonal"
+                >
                   <v-icon :icon="item.icon" size="18" />
                 </v-avatar>
                 <div class="notif-row__text">
                   <p class="font-weight-medium">{{ item.label }}</p>
                   <p class="text-caption text-grey">{{ item.desc }}</p>
                 </div>
-                <v-switch v-model="(notifPrefs as any)[item.key]" color="green" hide-details density="compact" />
+                <v-switch
+                  v-model="(notifPrefs as any)[item.key]"
+                  color="green"
+                  hide-details
+                  density="compact"
+                />
               </div>
             </v-card>
 
@@ -612,9 +741,16 @@ function copyAllSchedule(sourceDay: WeekDay) {
                 </v-avatar>
                 <div class="notif-row__text">
                   <p class="font-weight-medium">Ежедневный отчёт</p>
-                  <p class="text-caption text-grey">Итоги дня: заказы, выручка, рейтинг</p>
+                  <p class="text-caption text-grey">
+                    Итоги дня: заказы, выручка, рейтинг
+                  </p>
                 </div>
-                <v-switch v-model="notifPrefs.dailyReport" color="green" hide-details density="compact" />
+                <v-switch
+                  v-model="notifPrefs.dailyReport"
+                  color="green"
+                  hide-details
+                  density="compact"
+                />
               </div>
 
               <div class="notif-row">
@@ -623,15 +759,24 @@ function copyAllSchedule(sourceDay: WeekDay) {
                 </v-avatar>
                 <div class="notif-row__text">
                   <p class="font-weight-medium">Еженедельный отчёт</p>
-                  <p class="text-caption text-grey">Аналитика за неделю с графиками</p>
+                  <p class="text-caption text-grey">
+                    Аналитика за неделю с графиками
+                  </p>
                 </div>
-                <v-switch v-model="notifPrefs.weeklyReport" color="green" hide-details density="compact" />
+                <v-switch
+                  v-model="notifPrefs.weeklyReport"
+                  color="green"
+                  hide-details
+                  density="compact"
+                />
               </div>
             </v-card>
 
             <!-- Channels -->
             <v-card flat rounded="xl" class="pa-6 mb-5">
-              <p class="text-subtitle-1 font-weight-bold mb-4">Каналы доставки</p>
+              <p class="text-subtitle-1 font-weight-bold mb-4">
+                Каналы доставки
+              </p>
 
               <div class="notif-row">
                 <v-avatar color="orange" size="36" variant="tonal">
@@ -639,9 +784,16 @@ function copyAllSchedule(sourceDay: WeekDay) {
                 </v-avatar>
                 <div class="notif-row__text">
                   <p class="font-weight-medium">Звук</p>
-                  <p class="text-caption text-grey">Звуковое уведомление в браузере</p>
+                  <p class="text-caption text-grey">
+                    Звуковое уведомление в браузере
+                  </p>
                 </div>
-                <v-switch v-model="notifPrefs.sound" color="green" hide-details density="compact" />
+                <v-switch
+                  v-model="notifPrefs.sound"
+                  color="green"
+                  hide-details
+                  density="compact"
+                />
               </div>
 
               <div class="notif-row">
@@ -650,9 +802,16 @@ function copyAllSchedule(sourceDay: WeekDay) {
                 </v-avatar>
                 <div class="notif-row__text">
                   <p class="font-weight-medium">Push-уведомления</p>
-                  <p class="text-caption text-grey">Уведомления браузера даже если вкладка не активна</p>
+                  <p class="text-caption text-grey">
+                    Уведомления браузера даже если вкладка не активна
+                  </p>
                 </div>
-                <v-switch v-model="notifPrefs.browserPush" color="green" hide-details density="compact" />
+                <v-switch
+                  v-model="notifPrefs.browserPush"
+                  color="green"
+                  hide-details
+                  density="compact"
+                />
               </div>
 
               <v-divider class="my-3" />
@@ -673,9 +832,16 @@ function copyAllSchedule(sourceDay: WeekDay) {
                     class="mt-1"
                     style="max-width: 280px"
                   />
-                  <p v-else class="text-caption text-grey">Отправка на электронную почту</p>
+                  <p v-else class="text-caption text-grey">
+                    Отправка на электронную почту
+                  </p>
                 </div>
-                <v-switch v-model="notifPrefs.email" color="green" hide-details density="compact" />
+                <v-switch
+                  v-model="notifPrefs.email"
+                  color="green"
+                  hide-details
+                  density="compact"
+                />
               </div>
 
               <div class="notif-row">
@@ -694,9 +860,16 @@ function copyAllSchedule(sourceDay: WeekDay) {
                     class="mt-1"
                     style="max-width: 280px"
                   />
-                  <p v-else class="text-caption text-grey">Уведомления в Telegram-бот</p>
+                  <p v-else class="text-caption text-grey">
+                    Уведомления в Telegram-бот
+                  </p>
                 </div>
-                <v-switch v-model="notifPrefs.telegram" color="green" hide-details density="compact" />
+                <v-switch
+                  v-model="notifPrefs.telegram"
+                  color="green"
+                  hide-details
+                  density="compact"
+                />
               </div>
             </v-card>
 
@@ -723,14 +896,36 @@ function copyAllSchedule(sourceDay: WeekDay) {
               <div class="d-flex align-center ga-4">
                 <v-avatar color="primary" size="56">
                   <span class="text-h6 text-white font-weight-bold">
-                    {{ authStore.userName?.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) || '?' }}
+                    {{
+                      authStore.userName
+                        ?.split(" ")
+                        .map((n: string) => n[0])
+                        .join("")
+                        .toUpperCase()
+                        .slice(0, 2) || "?"
+                    }}
                   </span>
                 </v-avatar>
                 <div>
-                  <p class="text-subtitle-1 font-weight-bold">{{ authStore.userName || 'Пользователь' }}</p>
-                  <p class="text-body-2 text-grey">{{ authStore.user?.email }}</p>
-                  <v-chip size="x-small" variant="tonal" color="primary" class="mt-1">
-                    {{ authStore.userRole === 'admin' ? 'Администратор' : authStore.userRole === 'manager' ? 'Менеджер' : 'Сотрудник' }}
+                  <p class="text-subtitle-1 font-weight-bold">
+                    {{ authStore.userName || "Пользователь" }}
+                  </p>
+                  <p class="text-body-2 text-grey">
+                    {{ authStore.user?.email }}
+                  </p>
+                  <v-chip
+                    size="x-small"
+                    variant="tonal"
+                    color="primary"
+                    class="mt-1"
+                  >
+                    {{
+                      authStore.userRole === "admin"
+                        ? "Администратор"
+                        : authStore.userRole === "manager"
+                          ? "Менеджер"
+                          : "Сотрудник"
+                    }}
                   </v-chip>
                 </div>
               </div>
@@ -746,8 +941,14 @@ function copyAllSchedule(sourceDay: WeekDay) {
                   label="Текущий пароль"
                   :rules="passwordRules.current"
                   :type="showCurrentPassword ? 'text' : 'password'"
-                  :append-inner-icon="showCurrentPassword ? 'mdi-eye-off-outline' : 'mdi-eye-outline'"
-                  @click:append-inner="showCurrentPassword = !showCurrentPassword"
+                  :append-inner-icon="
+                    showCurrentPassword
+                      ? 'mdi-eye-off-outline'
+                      : 'mdi-eye-outline'
+                  "
+                  @click:append-inner="
+                    showCurrentPassword = !showCurrentPassword
+                  "
                   variant="outlined"
                   density="comfortable"
                   class="mb-3"
@@ -759,7 +960,9 @@ function copyAllSchedule(sourceDay: WeekDay) {
                   label="Новый пароль"
                   :rules="passwordRules.new"
                   :type="showNewPassword ? 'text' : 'password'"
-                  :append-inner-icon="showNewPassword ? 'mdi-eye-off-outline' : 'mdi-eye-outline'"
+                  :append-inner-icon="
+                    showNewPassword ? 'mdi-eye-off-outline' : 'mdi-eye-outline'
+                  "
                   @click:append-inner="showNewPassword = !showNewPassword"
                   variant="outlined"
                   density="comfortable"
@@ -772,8 +975,14 @@ function copyAllSchedule(sourceDay: WeekDay) {
                   label="Подтверждение пароля"
                   :rules="passwordRules.confirm"
                   :type="showConfirmPassword ? 'text' : 'password'"
-                  :append-inner-icon="showConfirmPassword ? 'mdi-eye-off-outline' : 'mdi-eye-outline'"
-                  @click:append-inner="showConfirmPassword = !showConfirmPassword"
+                  :append-inner-icon="
+                    showConfirmPassword
+                      ? 'mdi-eye-off-outline'
+                      : 'mdi-eye-outline'
+                  "
+                  @click:append-inner="
+                    showConfirmPassword = !showConfirmPassword
+                  "
                   variant="outlined"
                   density="comfortable"
                   class="mb-1"
@@ -781,7 +990,8 @@ function copyAllSchedule(sourceDay: WeekDay) {
                 />
 
                 <div class="text-caption text-grey mb-4">
-                  Пароль должен содержать минимум 8 символов, одну заглавную букву и одну цифру
+                  Пароль должен содержать минимум 8 символов, одну заглавную
+                  букву и одну цифру
                 </div>
 
                 <v-btn
@@ -797,15 +1007,24 @@ function copyAllSchedule(sourceDay: WeekDay) {
 
             <!-- Sessions -->
             <v-card flat rounded="xl" class="pa-6">
-              <p class="text-subtitle-1 font-weight-bold mb-4">Активные сессии</p>
+              <p class="text-subtitle-1 font-weight-bold mb-4">
+                Активные сессии
+              </p>
 
-              <div class="d-flex align-center ga-3 pa-3 rounded-lg" style="background: #f5f5f5">
+              <div
+                class="d-flex align-center ga-3 pa-3 rounded-lg"
+                style="background: #f5f5f5"
+              >
                 <v-icon icon="mdi-monitor" size="24" color="green" />
                 <div style="flex: 1">
                   <p class="text-body-2 font-weight-medium">Текущая сессия</p>
-                  <p class="text-caption text-grey">Браузер — {{ new Date().toLocaleDateString('ru-RU') }}</p>
+                  <p class="text-caption text-grey">
+                    Браузер — {{ new Date().toLocaleDateString("ru-RU") }}
+                  </p>
                 </div>
-                <v-chip color="green" size="x-small" variant="flat">Активна</v-chip>
+                <v-chip color="green" size="x-small" variant="flat"
+                  >Активна</v-chip
+                >
               </div>
 
               <v-btn
@@ -825,7 +1044,12 @@ function copyAllSchedule(sourceDay: WeekDay) {
       </div>
     </template>
 
-    <v-snackbar v-model="snackbar" :timeout="3000" :color="snackbarColor" rounded="lg">
+    <v-snackbar
+      v-model="snackbar"
+      :timeout="3000"
+      :color="snackbarColor"
+      rounded="lg"
+    >
       {{ snackbarText }}
     </v-snackbar>
   </div>
@@ -833,14 +1057,14 @@ function copyAllSchedule(sourceDay: WeekDay) {
 
 <style scoped>
 .settings-page {
-  padding: 0 32px 32px;
+  padding: 24px 32px 32px;
 }
 
 /* ── Header ── */
 .settings-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  /* justify-content: space-between; */
   margin-bottom: 24px;
 }
 
@@ -893,13 +1117,13 @@ function copyAllSchedule(sourceDay: WeekDay) {
 }
 
 .settings-tab--active {
-  background: #EA004B12;
-  color: #EA004B;
+  background: #ea004b12;
+  color: #ea004b;
   font-weight: 600;
 }
 
 .settings-tab--active .v-icon {
-  color: #EA004B;
+  color: #ea004b;
 }
 
 /* ── Content ── */

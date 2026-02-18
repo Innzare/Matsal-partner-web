@@ -20,11 +20,16 @@ import { useRestaurantStore } from "@/stores/restaurant";
 import { useAuthStore } from "@/stores/auth";
 import {
   ORDER_STATUS_LABELS,
-  ORDER_STATUS_COLORS,
   ORDER_TYPE_LABELS,
   ORDER_TYPE_COLORS,
 } from "@/types";
 import type { OrderType, PartnerOrderStatus } from "@/types";
+
+const ORDER_TYPE_ICONS: Record<OrderType, string> = {
+  delivery: "mdi-moped",
+  pickup: "mdi-walk",
+  dine_in: "mdi-silverware-fork-knife",
+};
 
 ChartJS.register(
   CategoryScale,
@@ -599,7 +604,10 @@ const reviews = [
     <!-- ═══ Header ═══ -->
     <div class="d-flex align-center justify-space-between mb-6">
       <div>
-        <h2 class="text-h5 font-weight-bold">{{ greeting }}</h2>
+        <!-- <h2 class="text-h5 font-weight-bold">{{ greeting }}</h2> -->
+        <h2 class="text-h5 font-weight-bold">
+          Аналитика вашего заведения за выбранный период
+        </h2>
         <p
           class="text-body-2 text-medium-emphasis mt-1"
           style="text-transform: capitalize"
@@ -1019,82 +1027,68 @@ const reviews = [
     </v-row>
 
     <!-- ═══ Recent Orders ═══ -->
-    <v-card flat rounded="xl" class="mb-6">
-      <div class="d-flex align-center justify-space-between pa-5 pb-3">
+    <v-card flat rounded="xl" class="db-orders-card mb-6">
+      <div class="db-orders-header">
         <div>
-          <p class="text-subtitle-1 font-weight-bold">Последние заказы</p>
-          <p class="text-caption text-medium-emphasis">
-            Обновляется в реальном времени
-          </p>
+          <p class="db-orders-title">Последние заказы</p>
+          <p class="db-orders-subtitle">Обновляется в реальном времени</p>
         </div>
         <router-link to="/orders" class="text-decoration-none">
-          <v-btn variant="outlined" rounded="lg" size="small" color="primary">
+          <button class="db-orders-link">
             Все заказы
-            <v-icon icon="mdi-arrow-top-right" size="14" class="ml-1" />
-          </v-btn>
+            <v-icon icon="mdi-arrow-right" size="14" />
+          </button>
         </router-link>
       </div>
-
-      <v-divider />
 
       <v-data-table
         :items="recentOrders"
         :headers="tableHeaders"
         :items-per-page="6"
         hide-default-footer
-        density="comfortable"
+        class="db-table"
       >
         <template #item.orderNumber="{ item }">
-          <span class="font-weight-bold text-body-2"
-            >#{{ item.orderNumber }}</span
-          >
+          <span class="db-order-id">#{{ item.orderNumber }}</span>
         </template>
 
         <template #item.createdAt="{ item }">
           <div>
-            <p class="text-body-2">{{ formatTime(item.createdAt) }}</p>
-            <p
-              class="text-caption text-medium-emphasis"
-              style="font-size: 10px"
-            >
-              {{ formatTimeAgo(item.createdAt) }}
-            </p>
+            <p class="db-date">{{ formatTime(item.createdAt) }}</p>
+            <p class="db-date-ago">{{ formatTimeAgo(item.createdAt) }}</p>
           </div>
         </template>
 
         <template #item.customer.name="{ item }">
-          <span class="text-body-2">{{ item.customer.name }}</span>
+          <div class="d-flex align-center ga-3">
+            <div class="db-avatar">{{ item.customer.name.charAt(0) }}</div>
+            <div>
+              <p class="db-customer-name">{{ item.customer.name }}</p>
+              <p class="db-customer-phone">{{ item.customer.phone }}</p>
+            </div>
+          </div>
         </template>
 
         <template #item.orderType="{ item }">
-          <v-chip
-            :color="ORDER_TYPE_COLORS[item.orderType]"
-            size="x-small"
-            label
-            variant="tonal"
-          >
+          <div class="db-type-pill" :style="{ '--type-color': ORDER_TYPE_COLORS[item.orderType] }">
+            <v-icon :icon="ORDER_TYPE_ICONS[item.orderType]" size="13" />
             {{ ORDER_TYPE_LABELS[item.orderType] }}
-          </v-chip>
+          </div>
         </template>
 
         <template #item.itemsCount="{ item }">
-          <span class="text-body-2">{{ item.items.length }}</span>
+          <span class="db-items-count">{{ item.items.length }}</span>
         </template>
 
         <template #item.totalPrice="{ item }">
-          <span class="font-weight-bold text-body-2" style="color: #ea004b">
-            {{ item.totalPrice.toLocaleString("ru-RU") }} ₽
-          </span>
+          <span class="db-price">{{ item.totalPrice.toLocaleString("ru-RU") }} ₽</span>
         </template>
 
         <template #item.status="{ item }">
-          <v-chip
-            :color="ORDER_STATUS_COLORS[item.status]"
-            :text="ORDER_STATUS_LABELS[item.status]"
-            size="small"
-            label
-            class="font-weight-medium"
-          />
+          <div class="db-status" :class="'db-status--' + item.status">
+            <span class="db-status__dot" />
+            {{ ORDER_STATUS_LABELS[item.status] }}
+          </div>
         </template>
       </v-data-table>
     </v-card>
@@ -1162,3 +1156,224 @@ const reviews = [
     </div>
   </div>
 </template>
+
+<style scoped>
+/* ── Recent Orders Card ── */
+.db-orders-card {
+  overflow: hidden;
+}
+
+.db-orders-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px 16px;
+}
+
+.db-orders-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1a1a2e;
+}
+
+.db-orders-subtitle {
+  font-size: 12px;
+  color: #9ca3af;
+  margin-top: 2px;
+}
+
+.db-orders-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  border-radius: 8px;
+  border: 1px solid #f0f0f0;
+  background: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  color: #EA004B;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.db-orders-link:hover {
+  background: color-mix(in srgb, #EA004B 5%, transparent);
+  border-color: color-mix(in srgb, #EA004B 20%, transparent);
+}
+
+/* ── Table ── */
+.db-table :deep(th) {
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  color: #9ca3af !important;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  white-space: nowrap;
+  border-bottom: 1px solid #f0f0f0 !important;
+}
+
+.db-table :deep(td) {
+  padding-top: 12px !important;
+  padding-bottom: 12px !important;
+  border-bottom: 1px solid #f5f5f5 !important;
+}
+
+.db-table :deep(tr:hover td) {
+  background: #fafafa !important;
+}
+
+.db-table :deep(tr:last-child td) {
+  border-bottom: none !important;
+}
+
+/* Order ID */
+.db-order-id {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1a1a2e;
+  letter-spacing: -0.2px;
+}
+
+/* Date */
+.db-date {
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.db-date-ago {
+  font-size: 11px;
+  color: #9ca3af;
+  margin-top: 1px;
+}
+
+/* Customer */
+.db-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #EA004B, #ff4081);
+  color: white;
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.db-customer-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+.db-customer-phone {
+  font-size: 11px;
+  color: #9ca3af;
+  margin-top: 1px;
+}
+
+/* Type pill */
+.db-type-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--type-color);
+  background: color-mix(in srgb, var(--type-color) 10%, transparent);
+  white-space: nowrap;
+}
+
+/* Items count */
+.db-items-count {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  background: #f3f4f6;
+}
+
+/* Price */
+.db-price {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1a1a2e;
+  white-space: nowrap;
+}
+
+/* Status */
+.db-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+
+.db-status__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.db-status--incoming {
+  color: #1976d2;
+  background: #e3f2fd;
+}
+.db-status--incoming .db-status__dot {
+  background: #1976d2;
+  animation: db-pulse 1.5s infinite;
+}
+
+.db-status--preparing {
+  color: #e65100;
+  background: #fff3e0;
+}
+.db-status--preparing .db-status__dot {
+  background: #F97316;
+  animation: db-pulse 1.5s infinite;
+}
+
+.db-status--ready {
+  color: #16a34a;
+  background: #e8f5e9;
+}
+.db-status--ready .db-status__dot {
+  background: #16a34a;
+}
+
+.db-status--completed {
+  color: #6b7280;
+  background: #f3f4f6;
+}
+.db-status--completed .db-status__dot {
+  background: #9ca3af;
+}
+
+.db-status--rejected {
+  color: #dc2626;
+  background: #fef2f2;
+}
+.db-status--rejected .db-status__dot {
+  background: #dc2626;
+}
+
+@keyframes db-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+</style>

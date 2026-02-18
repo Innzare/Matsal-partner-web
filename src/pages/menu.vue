@@ -79,6 +79,11 @@ const categoryTabs = computed(() => {
   return [{ id: null, name: "Все" }, ...menuStore.sortedCategories];
 });
 
+// Helpers
+function getCategoryName(catId: number): string {
+  return menuStore.categories.find((c) => c.id === catId)?.name ?? "—";
+}
+
 // Stats
 const totalItems = computed(() => menuStore.items.length);
 const availableItems = computed(
@@ -100,7 +105,7 @@ const stoppedItems = computed(
       <!-- Header -->
       <div class="menu-header">
         <div>
-          <h1 class="menu-header__title">Меню</h1>
+          <!-- <h1 class="menu-header__title">Меню</h1> -->
           <p class="menu-header__sub">
             {{ totalItems }} позиций · {{ availableItems }} доступно ·
             {{ stoppedItems }} в стопе
@@ -256,79 +261,94 @@ const stoppedItems = computed(
       </div>
 
       <!-- List View -->
-      <v-card v-else flat rounded="xl">
+      <v-card v-else flat rounded="xl" class="mt-table-card">
         <v-data-table
           :items="menuStore.filteredItems"
           :headers="[
-            { key: 'image', title: '', width: '56px', sortable: false },
-            { key: 'name', title: 'Название' },
-            { key: 'price', title: 'Цена', align: 'end' as const },
-            { key: 'weight', title: 'Вес', align: 'end' as const },
-            { key: 'available', title: 'Статус', width: '100px' },
-            { key: 'actions', title: '', sortable: false, width: '100px' },
+            { key: 'name', title: 'Позиция' },
+            { key: 'category', title: 'Категория', width: '140px' },
+            {
+              key: 'price',
+              title: 'Цена',
+              align: 'end' as const,
+              width: '110px',
+            },
+            {
+              key: 'weight',
+              title: 'Вес',
+              align: 'end' as const,
+              width: '90px',
+            },
+            { key: 'available', title: 'Статус', width: '120px' },
+            { key: 'actions', title: '', sortable: false, width: '90px' },
           ]"
           hover
-          density="comfortable"
+          class="mt-table"
         >
-          <template v-slot:item.image="{ item }">
-            <v-avatar size="40" rounded="lg" class="my-1">
-              <v-img v-if="item.image" :src="item.image" cover />
-              <v-icon v-else icon="mdi-food" size="20" color="grey" />
-            </v-avatar>
-          </template>
-
-          <template v-slot:item.name="{ item }">
-            <div>
-              <p class="font-weight-medium text-body-2">{{ item.name }}</p>
-              <p
-                class="text-caption text-grey"
-                style="
-                  max-width: 300px;
-                  white-space: nowrap;
-                  overflow: hidden;
-                  text-overflow: ellipsis;
-                "
-              >
-                {{ item.description }}
-              </p>
+          <template #item.name="{ item }">
+            <div class="d-flex align-center ga-3">
+              <div class="mt-img">
+                <v-img
+                  v-if="item.image"
+                  :src="item.image"
+                  cover
+                  class="mt-img__inner"
+                />
+                <v-icon
+                  v-else
+                  icon="mdi-food"
+                  size="18"
+                  color="grey-lighten-1"
+                />
+              </div>
+              <div class="mt-info">
+                <p class="mt-info__name">{{ item.name }}</p>
+                <p class="mt-info__desc">{{ item.description }}</p>
+              </div>
             </div>
           </template>
 
-          <template v-slot:item.price="{ item }">
-            <span class="font-weight-bold text-body-2">{{ item.price }} ₽</span>
+          <template #item.category="{ item }">
+            <span class="mt-category">{{
+              getCategoryName(item.category)
+            }}</span>
           </template>
 
-          <template v-slot:item.weight="{ item }">
-            <span class="text-body-2 text-grey">{{ item.weight }} г</span>
-          </template>
-
-          <template v-slot:item.available="{ item }">
-            <v-chip
-              :color="item.available ? 'green' : 'red'"
-              size="x-small"
-              variant="tonal"
-              @click="menuStore.toggleAvailability(item.id)"
-              style="cursor: pointer"
+          <template #item.price="{ item }">
+            <span class="mt-price"
+              >{{ item.price.toLocaleString("ru-RU") }} ₽</span
             >
-              {{ item.available ? "Активно" : "Стоп" }}
-            </v-chip>
           </template>
 
-          <template v-slot:item.actions="{ item }">
-            <v-btn
-              icon="mdi-pencil-outline"
-              size="x-small"
-              variant="text"
-              color="grey"
-              @click="openEditDialog(item)"
-            />
-            <v-btn
-              icon="mdi-delete-outline"
-              size="x-small"
-              variant="text"
-              color="red"
-              @click="openDeleteDialog(item.id)"
-            />
+          <template #item.weight="{ item }">
+            <span class="mt-weight">{{
+              item.weight ? item.weight + " г" : "—"
+            }}</span>
+          </template>
+
+          <template #item.available="{ item }">
+            <div
+              class="mt-status"
+              :class="item.available ? 'mt-status--on' : 'mt-status--off'"
+              @click.stop="menuStore.toggleAvailability(item.id)"
+            >
+              <span class="mt-status__dot" />
+              {{ item.available ? "Активно" : "Стоп" }}
+            </div>
+          </template>
+
+          <template #item.actions="{ item }">
+            <div class="mt-actions">
+              <button class="mt-action" @click.stop="openEditDialog(item)">
+                <v-icon icon="mdi-pencil-outline" size="15" />
+              </button>
+              <button
+                class="mt-action mt-action--danger"
+                @click.stop="openDeleteDialog(item.id)"
+              >
+                <v-icon icon="mdi-delete-outline" size="15" />
+              </button>
+            </div>
           </template>
         </v-data-table>
       </v-card>
@@ -382,6 +402,7 @@ const stoppedItems = computed(
   align-items: center;
   justify-content: space-between;
   margin-bottom: 20px;
+  padding-top: 20px;
 }
 
 .menu-header__title {
@@ -487,5 +508,174 @@ const stoppedItems = computed(
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 16px;
+}
+
+/* ── List table ── */
+.mt-table-card {
+  overflow: hidden;
+}
+
+.mt-table :deep(th) {
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: #9ca3af !important;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  white-space: nowrap;
+}
+
+.mt-table :deep(td) {
+  padding-top: 12px !important;
+  padding-bottom: 12px !important;
+  border-bottom: 1px solid #f5f5f5 !important;
+}
+
+.mt-table :deep(tr:hover td) {
+  background: #fafafa !important;
+}
+
+/* Image */
+.mt-img {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  background: #f3f4f6;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.mt-img__inner {
+  width: 100%;
+  height: 100%;
+}
+
+/* Info */
+.mt-info {
+  min-width: 0;
+}
+
+.mt-info__name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a1a2e;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mt-info__desc {
+  font-size: 12px;
+  color: #9ca3af;
+  margin-top: 2px;
+  max-width: 320px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Category */
+.mt-category {
+  font-size: 12px;
+  font-weight: 500;
+  color: #6b7280;
+  padding: 3px 10px;
+  border-radius: 6px;
+  background: #f3f4f6;
+}
+
+/* Price */
+.mt-price {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1a1a2e;
+  white-space: nowrap;
+}
+
+/* Weight */
+.mt-weight {
+  font-size: 13px;
+  color: #9ca3af;
+}
+
+/* Status */
+.mt-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: opacity 0.1s;
+  white-space: nowrap;
+}
+
+.mt-status:hover {
+  opacity: 0.8;
+}
+
+.mt-status__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.mt-status--on {
+  color: #16a34a;
+  background: #e8f5e9;
+}
+
+.mt-status--on .mt-status__dot {
+  background: #16a34a;
+}
+
+.mt-status--off {
+  color: #dc2626;
+  background: #fef2f2;
+}
+
+.mt-status--off .mt-status__dot {
+  background: #dc2626;
+}
+
+/* Actions */
+.mt-actions {
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+
+.mt-table :deep(tr:hover) .mt-actions {
+  opacity: 1;
+}
+
+.mt-action {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: none;
+  background: none;
+  color: #9ca3af;
+  cursor: pointer;
+  transition: all 0.1s;
+}
+
+.mt-action:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.mt-action--danger:hover {
+  background: #fef2f2;
+  color: #dc2626;
 }
 </style>
