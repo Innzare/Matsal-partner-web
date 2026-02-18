@@ -54,11 +54,12 @@ export const useOrdersStore = defineStore('orders', () => {
   })
 
   // Actions
-  const loadOrders = async () => {
+  const loadOrders = async (force = false) => {
+    if (!force && orders.value.length > 0) return
     isLoading.value = true
     try {
       if (IS_MOCK) {
-        await new Promise(r => setTimeout(r, 500))
+        await new Promise(r => setTimeout(r, 300))
         orders.value = structuredClone(MOCK_ORDERS)
         return
       }

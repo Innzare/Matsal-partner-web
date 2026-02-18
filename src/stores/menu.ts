@@ -35,11 +35,12 @@ export const useMenuStore = defineStore('menu', () => {
   )
 
   // Actions
-  const loadMenu = async () => {
+  const loadMenu = async (force = false) => {
+    if (!force && items.value.length > 0) return
     isLoading.value = true
     try {
       if (IS_MOCK) {
-        await new Promise(r => setTimeout(r, 500))
+        await new Promise(r => setTimeout(r, 300))
         items.value = structuredClone(MOCK_MENU_ITEMS)
         categories.value = structuredClone(MOCK_CATEGORIES)
         modifierGroups.value = structuredClone(MOCK_MODIFIER_GROUPS)

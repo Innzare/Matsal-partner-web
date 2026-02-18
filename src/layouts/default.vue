@@ -204,9 +204,9 @@ const confirmLogout = async () => {
             </div>
           </div>
 
-          <v-fade-transition hide-on-leave>
-            <router-view />
-          </v-fade-transition>
+          <router-view v-slot="{ Component }">
+            <component :is="Component" />
+          </router-view>
         </div>
       </v-main>
     </v-app>

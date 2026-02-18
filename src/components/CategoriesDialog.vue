@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import type { MenuCategory } from '@/types'
+import draggable from 'vuedraggable'
 
 const props = defineProps<{
   modelValue: boolean
@@ -19,9 +20,11 @@ const editingId = ref<number | null>(null)
 const editingName = ref('')
 const deleteConfirmId = ref<number | null>(null)
 
-const sortedCategories = computed(() =>
-  [...props.categories].sort((a, b) => a.sortOrder - b.sortOrder),
-)
+const localCategories = ref<MenuCategory[]>([])
+
+watch(() => props.categories, (cats) => {
+  localCategories.value = [...cats].sort((a, b) => a.sortOrder - b.sortOrder)
+}, { immediate: true, deep: true })
 
 function addCategory() {
   if (newCategoryName.value.trim()) {
@@ -57,105 +60,117 @@ function doDelete() {
   }
 }
 
-function moveUp(index: number) {
-  if (index === 0) return
-  const list = [...sortedCategories.value]
-  const temp = list[index]!
-  list[index] = list[index - 1]!
-  list[index - 1] = temp
-  emit('reorder', list)
+function onDragEnd() {
+  emit('reorder', localCategories.value)
 }
 
-function moveDown(index: number) {
-  if (index === sortedCategories.value.length - 1) return
-  const list = [...sortedCategories.value]
-  const temp = list[index]!
-  list[index] = list[index + 1]!
-  list[index + 1] = temp
-  emit('reorder', list)
+function close() {
+  emit('update:modelValue', false)
 }
 </script>
 
 <template>
   <v-dialog
     :model-value="modelValue"
-    max-width="500"
+    max-width="480"
     @update:model-value="emit('update:modelValue', $event)"
   >
-    <v-card rounded="xl">
-      <v-card-title class="d-flex align-center justify-space-between pt-5 px-6">
-        <span class="text-h6">Управление категориями</span>
-        <v-btn icon="mdi-close" variant="text" size="small" @click="emit('update:modelValue', false)" />
-      </v-card-title>
-
-      <v-card-text class="px-6">
-        <!-- Add new -->
-        <div class="d-flex ga-2 mb-4">
-          <v-text-field
-            v-model="newCategoryName"
-            label="Новая категория"
-            variant="outlined"
-            density="compact"
-            hide-details
-            @keyup.enter="addCategory"
-          />
-          <v-btn
-            color="primary"
-            variant="flat"
-            :disabled="!newCategoryName.trim()"
-            @click="addCategory"
-          >
-            Добавить
-          </v-btn>
+    <v-card rounded="xl" class="cd-dialog">
+      <!-- Header -->
+      <div class="cd-header">
+        <div>
+          <p class="cd-header__title">Категории</p>
+          <p class="cd-header__sub">{{ localCategories.length }} категорий</p>
         </div>
+        <v-btn icon="mdi-close" variant="text" size="small" density="compact" @click="close" />
+      </div>
 
-        <!-- List -->
-        <v-list density="compact">
-          <v-list-item
-            v-for="(cat, index) in sortedCategories"
-            :key="cat.id"
-            class="px-0"
-          >
-            <template v-if="editingId === cat.id">
-              <div class="d-flex align-center ga-2 w-100">
+      <v-divider />
+
+      <!-- Add form -->
+      <div class="cd-add">
+        <v-text-field
+          v-model="newCategoryName"
+          placeholder="Название категории..."
+          variant="outlined"
+          density="compact"
+          hide-details
+          rounded="lg"
+          class="cd-add__input"
+          @keyup.enter="addCategory"
+        />
+        <v-btn
+          color="primary"
+          variant="flat"
+          rounded="lg"
+          :disabled="!newCategoryName.trim()"
+          @click="addCategory"
+        >
+          Добавить
+        </v-btn>
+      </div>
+
+      <v-divider />
+
+      <!-- List with drag -->
+      <div class="cd-list">
+        <p v-if="localCategories.length === 0" class="text-center text-caption text-grey py-8">
+          Нет категорий. Добавьте первую.
+        </p>
+
+        <draggable
+          v-else
+          v-model="localCategories"
+          item-key="id"
+          handle=".cd-item__handle"
+          ghost-class="cd-item--ghost"
+          animation="200"
+          @end="onDragEnd"
+        >
+          <template #item="{ element: cat, index }">
+            <div class="cd-item" :class="{ 'cd-item--editing': editingId === cat.id }">
+              <!-- Normal view -->
+              <template v-if="editingId !== cat.id">
+                <div class="cd-item__handle">
+                  <v-icon icon="mdi-drag" size="18" />
+                </div>
+                <span class="cd-item__order">{{ index + 1 }}</span>
+                <span class="cd-item__name">{{ cat.name }}</span>
+                <div class="cd-item__actions">
+                  <button class="cd-item__btn" @click="startEdit(cat)">
+                    <v-icon icon="mdi-pencil-outline" size="15" />
+                  </button>
+                  <button class="cd-item__btn cd-item__btn--danger" @click="confirmDelete(cat.id)">
+                    <v-icon icon="mdi-delete-outline" size="15" />
+                  </button>
+                </div>
+              </template>
+
+              <!-- Editing -->
+              <template v-else>
                 <v-text-field
                   v-model="editingName"
                   variant="outlined"
                   density="compact"
                   hide-details
                   autofocus
+                  class="cd-item__edit-input"
                   @keyup.enter="saveEdit"
                   @keyup.escape="cancelEdit"
                 />
-                <v-btn icon="mdi-check" size="small" color="green" variant="text" @click="saveEdit" />
-                <v-btn icon="mdi-close" size="small" variant="text" @click="cancelEdit" />
-              </div>
-            </template>
-
-            <template v-else>
-              <div class="d-flex align-center justify-space-between w-100">
-                <div class="d-flex align-center ga-2">
-                  <v-icon icon="mdi-drag" size="small" class="text-grey cursor-grab" />
-                  <span class="text-body-2">{{ cat.name }}</span>
-                </div>
-                <div class="d-flex ga-0">
-                  <v-btn icon="mdi-chevron-up" size="x-small" variant="text" :disabled="index === 0" @click="moveUp(index)" />
-                  <v-btn icon="mdi-chevron-down" size="x-small" variant="text" :disabled="index === sortedCategories.length - 1" @click="moveDown(index)" />
-                  <v-btn icon="mdi-pencil" size="x-small" variant="text" @click="startEdit(cat)" />
-                  <v-btn icon="mdi-delete" size="x-small" variant="text" color="red" @click="confirmDelete(cat.id)" />
-                </div>
-              </div>
-            </template>
-          </v-list-item>
-        </v-list>
-
-        <p v-if="sortedCategories.length === 0" class="text-caption text-grey text-center py-4">
-          Нет категорий
-        </p>
-      </v-card-text>
+                <button class="cd-item__btn cd-item__btn--save" @click="saveEdit">
+                  <v-icon icon="mdi-check" size="16" />
+                </button>
+                <button class="cd-item__btn" @click="cancelEdit">
+                  <v-icon icon="mdi-close" size="16" />
+                </button>
+              </template>
+            </div>
+          </template>
+        </draggable>
+      </div>
     </v-card>
 
-    <!-- Delete confirm -->
     <ConfirmDialog
       :model-value="deleteConfirmId !== null"
       title="Удалить категорию?"
@@ -168,3 +183,148 @@ function moveDown(index: number) {
     />
   </v-dialog>
 </template>
+
+<style scoped>
+.cd-dialog {
+  overflow: hidden;
+}
+
+/* ── Header ── */
+.cd-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 20px 24px 16px;
+}
+
+.cd-header__title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1a1a2e;
+}
+
+.cd-header__sub {
+  font-size: 12px;
+  color: #9ca3af;
+  margin-top: 2px;
+}
+
+/* ── Add ── */
+.cd-add {
+  display: flex;
+  gap: 10px;
+  padding: 16px 24px;
+}
+
+.cd-add__input {
+  flex: 1;
+}
+
+/* ── List ── */
+.cd-list {
+  padding: 8px 16px 16px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+/* ── Item ── */
+.cd-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  transition: background 0.1s;
+}
+
+.cd-item:hover {
+  background: #f9fafb;
+}
+
+.cd-item--editing {
+  background: #f0f9ff;
+}
+
+.cd-item--ghost {
+  opacity: 0.4;
+  background: #eff6ff;
+}
+
+.cd-item__handle {
+  cursor: grab;
+  color: #d1d5db;
+  display: flex;
+  align-items: center;
+  padding: 2px;
+}
+
+.cd-item__handle:active {
+  cursor: grabbing;
+}
+
+.cd-item__order {
+  font-size: 11px;
+  font-weight: 600;
+  color: #9ca3af;
+  min-width: 18px;
+  height: 18px;
+  line-height: 18px;
+  text-align: center;
+  border-radius: 4px;
+  background: #f3f4f6;
+}
+
+.cd-item__name {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+  color: #1a1a2e;
+}
+
+.cd-item__edit-input {
+  flex: 1;
+}
+
+.cd-item__actions {
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+
+.cd-item:hover .cd-item__actions {
+  opacity: 1;
+}
+
+.cd-item__btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  border: none;
+  background: none;
+  color: #9ca3af;
+  cursor: pointer;
+  transition: all 0.1s;
+}
+
+.cd-item__btn:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.cd-item__btn--danger:hover {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.cd-item__btn--save {
+  color: #16a34a;
+}
+
+.cd-item__btn--save:hover {
+  background: #f0fdf4;
+}
+</style>

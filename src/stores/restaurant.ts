@@ -9,11 +9,12 @@ export const useRestaurantStore = defineStore('restaurant', () => {
   const isLoading = ref(false)
   const isSaving = ref(false)
 
-  const loadRestaurant = async () => {
+  const loadRestaurant = async (force = false) => {
+    if (!force && restaurant.value) return
     isLoading.value = true
     try {
       if (IS_MOCK) {
-        await new Promise(r => setTimeout(r, 300))
+        await new Promise(r => setTimeout(r, 200))
         restaurant.value = structuredClone(MOCK_RESTAURANT)
         return
       }
