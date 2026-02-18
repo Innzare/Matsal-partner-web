@@ -1,15 +1,34 @@
 <script lang="ts" setup>
 import { useRouter, useRoute } from "vue-router";
+import { useTheme } from "vuetify";
 import logo from "@/assets/images/logo.svg";
 import { useAuthStore } from "@/stores/auth";
 
 const authStore = useAuthStore();
+const theme = useTheme();
 
 const router = useRouter();
 const route = useRoute();
 
 const logoutDialog = ref(false);
 const drawer = ref(true);
+const collapsed = ref(false);
+
+const sidebarWidth = computed(() => (collapsed.value ? 72 : 260));
+
+// Dark mode
+const isDark = ref(localStorage.getItem("theme") === "dark");
+
+// Apply saved theme on mount
+if (isDark.value) {
+  theme.global.name.value = "dark";
+}
+
+const toggleTheme = () => {
+  isDark.value = !isDark.value;
+  theme.global.name.value = isDark.value ? "dark" : "light";
+  localStorage.setItem("theme", isDark.value ? "dark" : "light");
+};
 
 const mainNavRoutes = [
   { path: "/", title: "Главная", icon: "mdi-home-outline" },
@@ -79,33 +98,75 @@ const confirmLogout = async () => {
 </script>
 
 <template>
-  <v-responsive class="overflow-visible">
+  <v-responsive class="overflow-visible" :class="{ dark: isDark }">
     <v-app>
       <!-- Sidebar -->
-      <v-navigation-drawer v-model="drawer" class="lyt-sidebar" width="260">
+      <v-navigation-drawer
+        v-model="drawer"
+        class="lyt-sidebar"
+        :class="{ 'lyt-sidebar--collapsed': collapsed }"
+        :width="sidebarWidth"
+      >
         <!-- Logo -->
         <div class="lyt-sidebar-logo">
-          <v-img :src="logo" width="36" height="36" />
-          <div class="lyt-sidebar-brand">
-            <span class="lyt-sidebar-brand-name">Matsal</span>
-            <span class="lyt-sidebar-brand-label">Partner</span>
+          <div
+            :style="{
+              display: 'flex',
+              alignItems: 'center',
+              gap: collapsed ? '0' : '12px',
+            }"
+          >
+            <v-img
+              :src="logo"
+              :width="36"
+              :height="36"
+              class="lyt-sidebar-logo-img"
+            />
+            <div class="lyt-sidebar-brand">
+              <span class="lyt-sidebar-brand-name">Matsal</span>
+              <span class="lyt-sidebar-brand-label">Partner</span>
+            </div>
           </div>
         </div>
+
+        <!-- Collapse toggle (under logo) -->
+        <button class="lyt-collapse-btn" @click="collapsed = !collapsed">
+          <div :style="{ display: 'flex', gap: collapsed ? '0' : '12px' }">
+            <v-icon
+              :icon="collapsed ? 'mdi-chevron-right' : 'mdi-chevron-left'"
+              size="18"
+            />
+            <span class="lyt-nav-text">Свернуть</span>
+          </div>
+        </button>
 
         <!-- Main nav -->
         <div class="lyt-nav-section">
           <p class="lyt-nav-label">Основное</p>
           <nav class="lyt-nav">
-            <router-link
+            <v-tooltip
               v-for="item in mainNavRoutes"
               :key="item.path"
-              :to="item.path"
-              class="lyt-nav-item"
-              :class="{ 'lyt-nav-item--active': isActive(item.path) }"
+              :text="item.title"
+              location="end"
+              :disabled="!collapsed"
             >
-              <v-icon :icon="item.icon" size="20" />
-              <span>{{ item.title }}</span>
-            </router-link>
+              <template #activator="{ props: tip }">
+                <router-link
+                  :to="item.path"
+                  class="lyt-nav-item"
+                  :class="{ 'lyt-nav-item--active': isActive(item.path) }"
+                  v-bind="tip"
+                >
+                  <div
+                    :style="{ display: 'flex', gap: collapsed ? '0' : '12px' }"
+                  >
+                    <v-icon :icon="item.icon" size="20" />
+                    <span class="lyt-nav-text">{{ item.title }}</span>
+                  </div>
+                </router-link>
+              </template>
+            </v-tooltip>
           </nav>
         </div>
 
@@ -113,43 +174,83 @@ const confirmLogout = async () => {
         <div class="lyt-nav-section">
           <p class="lyt-nav-label">Прочее</p>
           <nav class="lyt-nav">
-            <router-link
+            <v-tooltip
               v-for="item in secondaryNavRoutes"
               :key="item.path"
-              :to="item.path"
-              class="lyt-nav-item"
-              :class="{ 'lyt-nav-item--active': isActive(item.path) }"
+              :text="item.title"
+              location="end"
+              :disabled="!collapsed"
             >
-              <v-icon :icon="item.icon" size="20" />
-              <span>{{ item.title }}</span>
-            </router-link>
+              <template #activator="{ props: tip }">
+                <router-link
+                  :to="item.path"
+                  class="lyt-nav-item"
+                  :class="{ 'lyt-nav-item--active': isActive(item.path) }"
+                  v-bind="tip"
+                >
+                  <div
+                    :style="{ display: 'flex', gap: collapsed ? '0' : '12px' }"
+                  >
+                    <v-icon :icon="item.icon" size="20" />
+                    <span class="lyt-nav-text">{{ item.title }}</span>
+                  </div>
+                </router-link>
+              </template>
+            </v-tooltip>
           </nav>
         </div>
 
         <div class="lyt-sidebar-spacer" />
 
+        <!-- Theme toggle -->
+        <button class="lyt-theme-btn" @click="toggleTheme">
+          <div :style="{ display: 'flex', gap: collapsed ? '0' : '12px' }">
+            <v-icon
+              :icon="isDark ? 'mdi-weather-sunny' : 'mdi-weather-night'"
+              size="18"
+            />
+            <span class="lyt-nav-text">{{
+              isDark ? "Светлая тема" : "Тёмная тема"
+            }}</span>
+          </div>
+        </button>
+
         <!-- User card in sidebar -->
         <div class="lyt-sidebar-user">
-          <div class="lyt-sidebar-user-avatar">
-            {{ userInitials }}
+          <div :style="{ display: 'flex', gap: collapsed ? '0' : '12px' }">
+            <v-tooltip text="Профиль" location="end" :disabled="!collapsed">
+              <template #activator="{ props: tip }">
+                <div
+                  class="lyt-sidebar-user-avatar"
+                  v-bind="collapsed ? tip : {}"
+                >
+                  {{ userInitials }}
+                </div>
+              </template>
+            </v-tooltip>
+            <div class="lyt-sidebar-user-info">
+              <span class="lyt-sidebar-user-name">{{
+                authStore.userName || "Пользователь"
+              }}</span>
+              <span class="lyt-sidebar-user-role">{{
+                authStore.userRole === "admin"
+                  ? "Администратор"
+                  : authStore.userRole || ""
+              }}</span>
+            </div>
+            <v-tooltip text="Выйти" location="end" :disabled="!collapsed">
+              <template #activator="{ props: tip }">
+                <button
+                  class="lyt-sidebar-logout"
+                  @click="logoutDialog = true"
+                  title="Выйти"
+                  v-bind="tip"
+                >
+                  <v-icon icon="mdi-logout" size="18" />
+                </button>
+              </template>
+            </v-tooltip>
           </div>
-          <div class="lyt-sidebar-user-info">
-            <span class="lyt-sidebar-user-name">{{
-              authStore.userName || "Пользователь"
-            }}</span>
-            <span class="lyt-sidebar-user-role">{{
-              authStore.userRole === "admin"
-                ? "Администратор"
-                : authStore.userRole || ""
-            }}</span>
-          </div>
-          <button
-            class="lyt-sidebar-logout"
-            @click="logoutDialog = true"
-            title="Выйти"
-          >
-            <v-icon icon="mdi-logout" size="18" />
-          </button>
         </div>
       </v-navigation-drawer>
 
@@ -287,21 +388,93 @@ const confirmLogout = async () => {
   display: flex;
   flex-direction: column;
   padding: 20px 16px;
+  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  overflow: hidden;
 }
 
+/* Collapsed overrides */
+.lyt-sidebar--collapsed {
+  padding: 20px 10px;
+}
+
+.lyt-sidebar--collapsed .lyt-sidebar-logo {
+  padding: 0 0 24px;
+  justify-content: center;
+}
+
+.lyt-sidebar--collapsed .lyt-sidebar-brand {
+  width: 0;
+  opacity: 0;
+  overflow: hidden;
+}
+
+.lyt-sidebar--collapsed .lyt-nav-label {
+  width: 0;
+  height: 0;
+  opacity: 0;
+  margin: 0;
+  overflow: hidden;
+}
+
+.lyt-sidebar--collapsed .lyt-nav-item {
+  justify-content: center;
+  padding: 10px;
+}
+
+.lyt-sidebar--collapsed .lyt-nav-text {
+  width: 0;
+  opacity: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.lyt-sidebar--collapsed .lyt-sidebar-user {
+  justify-content: center;
+  padding: 12px 0;
+}
+
+.lyt-sidebar--collapsed .lyt-sidebar-user-info {
+  width: 0;
+  opacity: 0;
+  overflow: hidden;
+}
+
+.lyt-sidebar--collapsed .lyt-sidebar-logout {
+  position: absolute;
+  width: 0;
+  opacity: 0;
+  overflow: hidden;
+}
+
+.lyt-sidebar--collapsed .lyt-collapse-btn,
+.lyt-sidebar--collapsed .lyt-theme-btn {
+  justify-content: center;
+  padding: 8px;
+}
+
+/* Logo */
 .lyt-sidebar-logo {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 0 12px 24px;
+  padding: 0 12px 22px;
   border-bottom: 1px solid #f0f0f0;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
+  min-height: 36px;
+}
+
+.lyt-sidebar-logo-img {
+  flex-shrink: 0;
 }
 
 .lyt-sidebar-brand {
   display: flex;
   align-items: baseline;
   gap: 6px;
+  transition:
+    opacity 0.2s ease,
+    width 0.25s ease;
+  white-space: nowrap;
 }
 
 .lyt-sidebar-brand-name {
@@ -332,6 +505,12 @@ const confirmLogout = async () => {
   letter-spacing: 0.8px;
   padding: 0 12px;
   margin-bottom: 8px;
+  transition:
+    opacity 0.2s ease,
+    height 0.25s ease,
+    margin 0.25s ease;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 .lyt-nav {
@@ -343,7 +522,7 @@ const confirmLogout = async () => {
 .lyt-nav-item {
   display: flex;
   align-items: center;
-  gap: 12px;
+  /* gap: 12px; */
   padding: 10px 12px;
   border-radius: 10px;
   font-size: 14px;
@@ -369,8 +548,65 @@ const confirmLogout = async () => {
   color: #ea004b;
 }
 
+.lyt-nav-text {
+  transition:
+    opacity 0.2s ease,
+    width 0.25s ease;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
 .lyt-sidebar-spacer {
   flex: 1;
+}
+
+/* Theme toggle */
+.lyt-theme-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: none;
+  background: none;
+  font-size: 13px;
+  font-weight: 500;
+  color: #9ca3af;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.lyt-theme-btn:hover {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+/* Collapse toggle */
+.lyt-collapse-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  width: 100%;
+  border: none;
+  background: none;
+  font-size: 13px;
+  font-weight: 500;
+  color: #9ca3af;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  margin-bottom: 16px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.lyt-collapse-btn:hover {
+  background: #f3f4f6;
+  color: #6b7280;
 }
 
 /* User card at bottom */
@@ -381,6 +617,10 @@ const confirmLogout = async () => {
   padding: 12px;
   border-top: 1px solid #f0f0f0;
   margin-top: 8px;
+  position: relative;
+  transition:
+    padding 0.25s ease,
+    justify-content 0.25s ease;
 }
 
 .lyt-sidebar-user-avatar {
@@ -400,6 +640,11 @@ const confirmLogout = async () => {
 .lyt-sidebar-user-info {
   flex: 1;
   min-width: 0;
+  transition:
+    opacity 0.2s ease,
+    width 0.25s ease;
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 .lyt-sidebar-user-name {
@@ -745,5 +990,199 @@ const confirmLogout = async () => {
 
 .lyt-logout-dialog-btn--confirm:hover {
   background: #dc2626;
+}
+
+/* ============================= */
+/* ===== DARK MODE OVERRIDES === */
+/* ============================= */
+
+/* Sidebar */
+.dark .lyt-sidebar {
+  background: #1e1e2e !important;
+  border-right-color: #2e2e42 !important;
+}
+
+.dark .lyt-sidebar-logo {
+  border-bottom-color: #2e2e42;
+}
+
+.dark .lyt-sidebar-brand-name {
+  color: #e4e4e7;
+}
+
+.dark .lyt-nav-label {
+  color: #71717a;
+}
+
+.dark .lyt-nav-item {
+  color: #a1a1aa;
+}
+
+.dark .lyt-nav-item:hover {
+  background: #252538;
+  color: #e4e4e7;
+}
+
+.dark .lyt-nav-item--active {
+  background: color-mix(in srgb, #ea004b 15%, transparent);
+  color: #ff4081;
+}
+
+.dark .lyt-nav-item--active:hover {
+  background: color-mix(in srgb, #ea004b 20%, transparent);
+  color: #ff4081;
+}
+
+.dark .lyt-theme-btn,
+.dark .lyt-collapse-btn {
+  color: #71717a;
+}
+
+.dark .lyt-theme-btn:hover,
+.dark .lyt-collapse-btn:hover {
+  background: #252538;
+  color: #a1a1aa;
+}
+
+.dark .lyt-sidebar-user {
+  border-top-color: #2e2e42;
+}
+
+.dark .lyt-sidebar-user-name {
+  color: #e4e4e7;
+}
+
+.dark .lyt-sidebar-user-role {
+  color: #71717a;
+}
+
+.dark .lyt-sidebar-logout {
+  color: #71717a;
+}
+
+.dark .lyt-sidebar-logout:hover {
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+}
+
+/* Content */
+.dark .lyt-content {
+  background: #121220;
+}
+
+/* Header */
+.dark .lyt-header {
+  background: #1e1e2e;
+  border-bottom-color: #2e2e42;
+}
+
+.dark .lyt-header-title {
+  color: #e4e4e7;
+}
+
+.dark .lyt-header-subtitle {
+  color: #71717a;
+}
+
+.dark .lyt-header-search-input {
+  background: #252538;
+  border-color: #2e2e42;
+  color: #e4e4e7;
+}
+
+.dark .lyt-header-search-input::placeholder {
+  color: #71717a;
+}
+
+.dark .lyt-header-search-input:focus {
+  border-color: #ea004b;
+  background: #1e1e2e;
+  box-shadow: 0 0 0 3px color-mix(in srgb, #ea004b 15%, transparent);
+}
+
+.dark .lyt-header-icon-btn {
+  background: #252538;
+  border-color: #2e2e42;
+  color: #a1a1aa;
+}
+
+.dark .lyt-header-icon-btn:hover {
+  background: #2e2e42;
+  color: #e4e4e7;
+  border-color: #3f3f5c;
+}
+
+.dark .lyt-header-divider {
+  background: #2e2e42;
+}
+
+.dark .lyt-header-user:hover {
+  background: #252538;
+}
+
+.dark .lyt-header-user-chevron {
+  color: #71717a;
+}
+
+/* Dropdown */
+.dark .lyt-dropdown {
+  background: #1e1e2e;
+  border-color: #2e2e42;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+}
+
+.dark .lyt-dropdown-name {
+  color: #e4e4e7;
+}
+
+.dark .lyt-dropdown-email {
+  color: #71717a;
+}
+
+.dark .lyt-dropdown-divider {
+  background: #2e2e42;
+}
+
+.dark .lyt-dropdown-item {
+  color: #a1a1aa;
+}
+
+.dark .lyt-dropdown-item:hover {
+  background: #252538;
+}
+
+.dark .lyt-dropdown-item--danger {
+  color: #f87171;
+}
+
+.dark .lyt-dropdown-item--danger:hover {
+  background: rgba(239, 68, 68, 0.12);
+}
+
+/* Logout dialog */
+.dark .lyt-logout-dialog {
+  background: #1e1e2e;
+}
+
+.dark .lyt-logout-dialog-icon {
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+}
+
+.dark .lyt-logout-dialog-title {
+  color: #e4e4e7;
+}
+
+.dark .lyt-logout-dialog-text {
+  color: #a1a1aa;
+}
+
+.dark .lyt-logout-dialog-btn--cancel {
+  background: #252538;
+  color: #a1a1aa;
+}
+
+.dark .lyt-logout-dialog-btn--cancel:hover {
+  background: #2e2e42;
 }
 </style>
