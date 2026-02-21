@@ -11,7 +11,8 @@ const router = useRouter();
 const route = useRoute();
 
 const logoutDialog = ref(false);
-const isMobile = ref(window.innerWidth < 768);
+const DRAWER_BREAKPOINT = 1280;
+const isMobile = ref(window.innerWidth < DRAWER_BREAKPOINT);
 const drawer = ref(!isMobile.value);
 const collapsed = ref(false);
 
@@ -19,7 +20,12 @@ const sidebarWidth = computed(() => (collapsed.value ? 72 : 260));
 
 onMounted(() => {
   const onResize = () => {
-    isMobile.value = window.innerWidth < 768;
+    const wasDesktop = !isMobile.value;
+    isMobile.value = window.innerWidth < DRAWER_BREAKPOINT;
+    // auto-open when resizing back to desktop
+    if (wasDesktop === false && !isMobile.value) {
+      drawer.value = true;
+    }
     if (isMobile.value) {
       collapsed.value = false;
     }
@@ -124,6 +130,8 @@ const confirmLogout = async () => {
         class="lyt-sidebar"
         :class="{ 'lyt-sidebar--collapsed': collapsed }"
         :width="sidebarWidth"
+        :mobile-breakpoint="0"
+        :temporary="isMobile"
       >
         <!-- Logo -->
         <div class="lyt-sidebar-logo">

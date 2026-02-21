@@ -5,6 +5,7 @@ import type {
   ModifierGroup,
   RestaurantProfile,
   Review,
+  Notification,
 } from '@/types'
 
 // ===== Заказы =====
@@ -417,5 +418,86 @@ export const MOCK_REVIEWS: Review[] = [
     orderType: 'delivery',
     orderNumber: 990,
     items: ['Хинкали (10 шт)', 'Харчо'],
+  },
+]
+
+// ===== Уведомления =====
+
+export const MOCK_NOTIFICATIONS: Notification[] = [
+  {
+    id: 'ntf-001',
+    type: 'new_order',
+    title: 'Новый заказ #1045',
+    message: 'Ахмед Магомедов — доставка, 1 250 ₽',
+    createdAt: new Date(Date.now() - 2 * 60000).toISOString(),
+    isRead: false,
+    orderId: 'ord-001',
+    orderNumber: 1045,
+  },
+  {
+    id: 'ntf-002',
+    type: 'new_review',
+    title: 'Новый отзыв — 5 звёзд',
+    message: 'Зарина Исаева: «Всё было очень вкусно, доставили быстро!»',
+    createdAt: new Date(Date.now() - 15 * 60000).toISOString(),
+    isRead: false,
+    reviewId: 1,
+  },
+  {
+    id: 'ntf-003',
+    type: 'order_status',
+    title: 'Заказ #1044 готов',
+    message: 'Заказ ожидает курьера',
+    createdAt: new Date(Date.now() - 35 * 60000).toISOString(),
+    isRead: false,
+    orderId: 'ord-002',
+    orderNumber: 1044,
+  },
+  {
+    id: 'ntf-004',
+    type: 'order_rejected',
+    title: 'Заказ #1043 отклонён',
+    message: 'Причина: нет ингредиентов',
+    createdAt: new Date(Date.now() - 2 * 3600000).toISOString(),
+    isRead: true,
+    orderId: 'ord-003',
+    orderNumber: 1043,
+  },
+  {
+    id: 'ntf-005',
+    type: 'new_order',
+    title: 'Новый заказ #1042',
+    message: 'Муса Хасанов — самовывоз, 780 ₽',
+    createdAt: new Date(Date.now() - 3 * 3600000).toISOString(),
+    isRead: true,
+    orderId: 'ord-004',
+    orderNumber: 1042,
+  },
+  {
+    id: 'ntf-006',
+    type: 'new_review',
+    title: 'Новый отзыв — 3 звезды',
+    message: 'Рустам Алиев: «Ждал дольше обещанного, но еда хорошая»',
+    createdAt: new Date(Date.now() - 5 * 3600000).toISOString(),
+    isRead: true,
+    reviewId: 2,
+  },
+  {
+    id: 'ntf-007',
+    type: 'order_status',
+    title: 'Заказ #1041 завершён',
+    message: 'Заказ успешно доставлен клиенту',
+    createdAt: new Date(Date.now() - 6 * 3600000).toISOString(),
+    isRead: true,
+    orderId: 'ord-005',
+    orderNumber: 1041,
+  },
+  {
+    id: 'ntf-008',
+    type: 'system',
+    title: 'Заведение будет закрыто',
+    message: 'Не забудьте изменить статус в настройках перед закрытием',
+    createdAt: new Date(Date.now() - 24 * 3600000).toISOString(),
+    isRead: true,
   },
 ]

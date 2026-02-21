@@ -175,3 +175,41 @@ export const ORDER_STATUS_COLORS: Record<PartnerOrderStatus, string> = {
   completed: 'grey',
   rejected: 'red',
 }
+
+// ===== Уведомления =====
+
+export type NotificationType =
+  | 'new_order'
+  | 'order_status'
+  | 'new_review'
+  | 'order_rejected'
+  | 'system'
+
+export interface Notification {
+  id: string
+  type: NotificationType
+  title: string
+  message: string
+  createdAt: string
+  isRead: boolean
+  orderId?: string
+  orderNumber?: number
+  reviewId?: number
+  meta?: Record<string, string | number>
+}
+
+export const NOTIFICATION_TYPE_ICONS: Record<NotificationType, string> = {
+  new_order:     'mdi-receipt-text',
+  order_status:  'mdi-swap-horizontal',
+  new_review:    'mdi-star-outline',
+  order_rejected:'mdi-close-circle-outline',
+  system:        'mdi-bell-outline',
+}
+
+export const NOTIFICATION_TYPE_COLORS: Record<NotificationType, string> = {
+  new_order:     '#3b82f6',
+  order_status:  '#f97316',
+  new_review:    '#eab308',
+  order_rejected:'#ef4444',
+  system:        '#8b5cf6',
+}
