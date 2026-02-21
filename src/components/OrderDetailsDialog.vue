@@ -651,4 +651,85 @@ const steps = computed(() => {
 .od-btn--pickup:hover {
   background: #c00040;
 }
+
+/* ── Dark Theme ── */
+.dark .od-header__number {
+  color: #e4e4e7;
+}
+
+.dark .od-info-tag {
+  background: #252538;
+  color: #a1a1aa;
+}
+
+.dark .od-section {
+  border-bottom-color: #2e2e42;
+}
+
+.dark .od-section__title {
+  color: #a1a1aa;
+}
+
+.dark .od-customer__name {
+  color: #e4e4e7;
+}
+
+.dark .od-address {
+  background: #252538;
+}
+
+.dark .od-address__text {
+  color: #a1a1aa;
+}
+
+.dark .od-comment {
+  background: rgba(146, 64, 14, 0.12);
+  border-color: rgba(146, 64, 14, 0.25);
+  color: #fbbf24;
+}
+
+.dark .od-item {
+  border-bottom-color: #2e2e42;
+}
+
+.dark .od-item__name {
+  color: #e4e4e7;
+}
+
+.dark .od-item__price {
+  color: #a1a1aa;
+}
+
+.dark .od-item__qty {
+  background: rgba(234, 0, 75, 0.15);
+}
+
+.dark .od-totals {
+  background: #252538;
+}
+
+.dark .od-totals__row--total {
+  color: #e4e4e7;
+  border-top-color: #2e2e42;
+}
+
+.dark .od-step__dot {
+  background: #2e2e42;
+}
+
+.dark .od-step__line {
+  background: #2e2e42;
+}
+
+.dark .od-step--done .od-step__label {
+  color: #a1a1aa;
+}
+
+.dark .od-footer {
+  border-top-color: #2e2e42;
+}
+
+.dark .od-btn--reject {
+  background: rgba(220, 38, 38, 0.15);
+}
 </style>

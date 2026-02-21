@@ -274,4 +274,45 @@ const emit = defineEmits<{
   background: #fef2f2;
   color: #dc2626;
 }
+
+/* ── Dark Theme ── */
+.dark .mi-card {
+  background: #1e1e2e;
+  border-color: #2e2e42;
+}
+
+.dark .mi-card:hover {
+  border-color: #3f3f5a;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.dark .mi-card__img-wrap {
+  background: #252538;
+}
+
+.dark .mi-card__img-fallback {
+  background: #252538;
+}
+
+.dark .mi-card__name {
+  color: #e4e4e7;
+}
+
+.dark .mi-card__footer {
+  border-top-color: #2e2e42;
+}
+
+.dark .mi-card__status:hover {
+  background: #252538;
+}
+
+.dark .mi-card__action:hover {
+  background: #252538;
+  color: #e4e4e7;
+}
+
+.dark .mi-card__action--danger:hover {
+  background: rgba(220, 38, 38, 0.15);
+  color: #f87171;
+}
 </style>

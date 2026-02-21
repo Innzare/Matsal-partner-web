@@ -1012,8 +1012,7 @@ function copyAllSchedule(sourceDay: WeekDay) {
               </p>
 
               <div
-                class="d-flex align-center ga-3 pa-3 rounded-lg"
-                style="background: #f5f5f5"
+                class="d-flex align-center ga-3 pa-3 rounded-lg session-row"
               >
                 <v-icon icon="mdi-monitor" size="24" color="green" />
                 <div style="flex: 1">
@@ -1130,9 +1129,6 @@ function copyAllSchedule(sourceDay: WeekDay) {
 .settings-content {
   flex: 1;
   min-width: 0;
-}
-
-.settings-section {
 }
 
 .section-title {
@@ -1259,5 +1255,92 @@ function copyAllSchedule(sourceDay: WeekDay) {
   .settings-cover {
     display: none;
   }
+}
+
+@media (max-width: 767px) {
+  .settings-page {
+    padding: 16px;
+  }
+
+  .settings-header {
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .settings-header__title {
+    font-size: 20px;
+  }
+
+  .schedule-row {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .schedule-row__day {
+    width: auto;
+    min-width: 100px;
+  }
+
+  .settings-stat {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+/* ── Dark mode ── */
+.dark .settings-header__title,
+.dark .section-title,
+.dark .settings-stat__value {
+  color: #e4e4e7;
+}
+
+.dark .settings-header__sub,
+.dark .section-desc,
+.dark .settings-stat__label {
+  color: #71717a;
+}
+
+.dark .settings-sidebar {
+  background: #1e1e2e;
+}
+
+.dark .settings-tab {
+  color: #a1a1aa;
+}
+
+.dark .settings-tab:hover {
+  background: #252538;
+  color: #e4e4e7;
+}
+
+.dark .settings-tab--active {
+  background: color-mix(in srgb, #ea004b 15%, transparent);
+  color: #ff4081;
+}
+
+.dark .schedule-row {
+  background: #252538;
+}
+
+.dark .schedule-row__day {
+  color: #e4e4e7;
+}
+
+.dark .notif-row + .notif-row {
+  border-top-color: #2e2e42;
+}
+
+.dark .settings-cover__placeholder {
+  background: #252538;
+  border-color: #3f3f5c;
+}
+
+.session-row {
+  background: #f5f5f5;
+}
+
+.dark .session-row {
+  background: #252538;
 }
 </style>

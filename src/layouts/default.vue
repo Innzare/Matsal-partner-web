@@ -11,23 +11,41 @@ const router = useRouter();
 const route = useRoute();
 
 const logoutDialog = ref(false);
-const drawer = ref(true);
+const isMobile = ref(window.innerWidth < 768);
+const drawer = ref(!isMobile.value);
 const collapsed = ref(false);
 
 const sidebarWidth = computed(() => (collapsed.value ? 72 : 260));
 
+onMounted(() => {
+  const onResize = () => {
+    isMobile.value = window.innerWidth < 768;
+    if (isMobile.value) {
+      collapsed.value = false;
+    }
+  };
+  window.addEventListener("resize", onResize);
+  onUnmounted(() => window.removeEventListener("resize", onResize));
+});
+
 // Dark mode
 const isDark = ref(localStorage.getItem("theme") === "dark");
+
+const applyDarkClass = (dark: boolean) => {
+  document.documentElement.classList.toggle("dark", dark);
+};
 
 // Apply saved theme on mount
 if (isDark.value) {
   theme.global.name.value = "dark";
+  applyDarkClass(true);
 }
 
 const toggleTheme = () => {
   isDark.value = !isDark.value;
   theme.global.name.value = isDark.value ? "dark" : "light";
   localStorage.setItem("theme", isDark.value ? "dark" : "light");
+  applyDarkClass(isDark.value);
 };
 
 const mainNavRoutes = [
@@ -260,18 +278,25 @@ const confirmLogout = async () => {
           <!-- Header -->
           <header class="lyt-header">
             <div class="lyt-header-left">
+              <button
+                v-if="isMobile"
+                class="lyt-burger-btn"
+                @click="drawer = !drawer"
+              >
+                <v-icon icon="mdi-menu" size="22" />
+              </button>
               <div>
                 <h1 class="lyt-header-title">
                   {{ routeTitles[route.path] || "Страница" }}
                 </h1>
-                <p class="lyt-header-subtitle">
+                <p class="lyt-header-subtitle" v-if="!isMobile">
                   {{ routeSubtitles[route.path] || "" }}
                 </p>
               </div>
             </div>
 
             <div class="lyt-header-right">
-              <div class="lyt-header-search">
+              <div v-if="!isMobile" class="lyt-header-search">
                 <v-icon
                   icon="mdi-magnify"
                   size="18"
@@ -289,11 +314,11 @@ const confirmLogout = async () => {
                 <span class="lyt-header-badge">3</span>
               </button>
 
-              <button class="lyt-header-icon-btn" @click="goToSettings">
+              <button v-if="!isMobile" class="lyt-header-icon-btn" @click="goToSettings">
                 <v-icon icon="mdi-cog-outline" size="20" />
               </button>
 
-              <div class="lyt-header-divider" />
+              <div v-if="!isMobile" class="lyt-header-divider" />
 
               <v-menu offset="8">
                 <template v-slot:activator="{ props }">
@@ -1194,5 +1219,58 @@ const confirmLogout = async () => {
 
 .dark .lyt-logout-dialog-btn--cancel:hover {
   background: #2e2e42;
+}
+
+/* ===== BURGER BUTTON ===== */
+.lyt-burger-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: none;
+  background: none;
+  color: #6b7280;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.lyt-burger-btn:hover {
+  background: #f9f4f0;
+  color: #1a1a2e;
+}
+
+.dark .lyt-burger-btn {
+  color: #a1a1aa;
+}
+
+.dark .lyt-burger-btn:hover {
+  background: #252538;
+  color: #e4e4e7;
+}
+
+/* ===== MOBILE ===== */
+@media (max-width: 767px) {
+  .lyt-header {
+    padding: 12px 16px;
+  }
+
+  .lyt-header-title {
+    font-size: 17px;
+  }
+
+  .lyt-content {
+    /* Vuetify v-main adds padding-left equal to drawer width; on mobile drawer is hidden */
+  }
+
+  .lyt-logout-dialog {
+    padding: 24px 20px;
+  }
+
+  .lyt-logout-dialog-actions {
+    flex-direction: column;
+  }
 }
 </style>

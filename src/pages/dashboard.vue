@@ -18,6 +18,7 @@ import { useOrdersStore } from "@/stores/orders";
 import { useMenuStore } from "@/stores/menu";
 import { useRestaurantStore } from "@/stores/restaurant";
 import { useAuthStore } from "@/stores/auth";
+import { useReviewsStore } from "@/stores/reviews";
 import {
   ORDER_STATUS_LABELS,
   ORDER_TYPE_LABELS,
@@ -48,12 +49,14 @@ const ordersStore = useOrdersStore();
 const menuStore = useMenuStore();
 const restaurantStore = useRestaurantStore();
 const authStore = useAuthStore();
+const reviewsStore = useReviewsStore();
 
 onMounted(async () => {
   await Promise.all([
     ordersStore.loadOrders(),
     menuStore.loadMenu(),
     restaurantStore.loadRestaurant(),
+    reviewsStore.loadReviews(),
   ]);
 });
 
@@ -574,38 +577,32 @@ function formatTimeAgo(date: string): string {
 }
 
 // ─── Customer reviews ───
-const reviews = [
-  {
-    id: 1,
-    author: "Мария С.",
-    date: "12 фев",
-    rating: 5,
-    text: "Очень вкусная еда! Хычины просто объедение — хрустящие, с ароматной начинкой.",
-  },
-  {
-    id: 2,
-    author: "Алексей Р.",
-    date: "10 фев",
-    rating: 4,
-    text: "Отличная кухня, быстрая доставка. Лобиани был горячим, как будто только из печи.",
-  },
-  {
-    id: 3,
-    author: "Диана К.",
-    date: "8 фев",
-    rating: 5,
-    text: "Заказывала харчо и хинкали — всё на высшем уровне. Порции большие, цена адекватная.",
-  },
-];
+function getInitials(name: string): string {
+  return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+}
+
+function getRatingColor(rating: number): string {
+  if (rating >= 4) return '#16a34a';
+  if (rating === 3) return '#F97316';
+  return '#dc2626';
+}
+
+function reviewTimeAgo(date: string): string {
+  const diff = Date.now() - new Date(date).getTime();
+  const days = Math.floor(diff / 86400000);
+  if (days === 0) return 'сегодня';
+  if (days === 1) return 'вчера';
+  if (days < 7) return `${days} дн. назад`;
+  return `${Math.floor(days / 7)} нед. назад`;
+}
 </script>
 
 <template>
-  <div class="px-8 py-6">
+  <div class="db-page">
     <!-- ═══ Header ═══ -->
-    <div class="d-flex align-center justify-space-between mb-6">
+    <div class="db-page-header mb-6">
       <div>
-        <!-- <h2 class="text-h5 font-weight-bold">{{ greeting }}</h2> -->
-        <h2 class="text-h5 font-weight-bold">
+        <h2 class="text-h5 font-weight-bold db-page-title">
           Аналитика вашего заведения за выбранный период
         </h2>
         <p
@@ -632,7 +629,7 @@ const reviews = [
 
     <!-- ═══ 6 KPI Cards ═══ -->
     <v-row dense class="mb-6">
-      <v-col v-for="kpi in kpiCards" :key="kpi.label" cols="12" md="4" lg="4">
+      <v-col v-for="kpi in kpiCards" :key="kpi.label" cols="6" md="4" lg="4">
         <v-card flat rounded="xl" class="pa-4 h-100">
           <div class="d-flex align-center justify-space-between mb-3">
             <div
@@ -1095,60 +1092,57 @@ const reviews = [
 
     <!-- ═══ Reviews ═══ -->
     <div class="mb-2">
-      <div class="d-flex align-center justify-space-between mb-4">
+      <div class="db-reviews-header">
         <div>
-          <p class="text-subtitle-1 font-weight-bold">Отзывы клиентов</p>
-          <p class="text-caption text-medium-emphasis">
-            Рейтинг {{ restaurantStore.restaurant?.rating ?? "—" }} / 5.0 ({{
-              restaurantStore.restaurant?.reviewsCount ?? 0
-            }}
-            отзывов)
+          <p class="db-reviews-title">Отзывы клиентов</p>
+          <p class="db-reviews-subtitle">
+            Рейтинг {{ restaurantStore.restaurant?.rating ?? "—" }} / 5.0 ·
+            {{ reviewsStore.reviews.length }} отзывов
           </p>
         </div>
         <router-link to="/reviews" class="text-decoration-none">
-          <v-btn variant="text" size="small" color="primary">
+          <button class="db-orders-link">
             Все отзывы
-            <v-icon icon="mdi-arrow-right" size="14" class="ml-1" />
-          </v-btn>
+            <v-icon icon="mdi-arrow-right" size="14" />
+          </button>
         </router-link>
       </div>
 
       <v-row dense>
-        <v-col v-for="r in reviews" :key="r.id" cols="12" md="4">
-          <v-card flat rounded="xl" class="pa-5 h-100">
-            <div class="d-flex align-center justify-space-between mb-3">
-              <v-rating
-                :model-value="r.rating"
-                color="warning"
-                size="16"
-                readonly
-                density="compact"
-              />
-              <span class="text-caption text-medium-emphasis">{{
-                r.date
-              }}</span>
+        <v-col v-for="r in reviewsStore.recentReviews" :key="r.id" cols="12" md="4">
+          <v-card flat rounded="xl" class="db-review-card h-100">
+            <div class="db-review-card__top">
+              <div class="db-review-card__author">
+                <div class="db-review-card__avatar">{{ getInitials(r.author) }}</div>
+                <div>
+                  <p class="db-review-card__name">{{ r.author }}</p>
+                  <p class="db-review-card__date">{{ reviewTimeAgo(r.date) }}</p>
+                </div>
+              </div>
+              <div class="db-review-card__badge" :style="{ background: getRatingColor(r.rating) }">
+                <v-icon icon="mdi-star" size="12" color="white" />
+                {{ r.rating }}.0
+              </div>
             </div>
-            <p
-              class="text-body-2 text-medium-emphasis mb-4"
-              style="line-height: 1.6"
-            >
-              "{{ r.text }}"
-            </p>
-            <div class="d-flex align-center ga-2">
-              <v-avatar color="primary" size="28">
-                <span
-                  class="text-caption text-white font-weight-bold"
-                  style="font-size: 10px"
-                >
-                  {{
-                    r.author
-                      .split(" ")
-                      .map((n) => n[0])
-                      .join("")
-                  }}
-                </span>
-              </v-avatar>
-              <span class="text-body-2 font-weight-medium">{{ r.author }}</span>
+
+            <p class="db-review-card__text">"{{ r.text }}"</p>
+
+            <div class="db-review-card__items">
+              <span v-for="item in r.items.slice(0, 2)" :key="item" class="db-review-card__tag">
+                {{ item }}
+              </span>
+              <span v-if="r.items.length > 2" class="db-review-card__tag">
+                +{{ r.items.length - 2 }}
+              </span>
+            </div>
+
+            <div v-if="r.reply" class="db-review-card__reply">
+              <v-icon icon="mdi-reply" size="12" color="#EA004B" />
+              <span>Ответ отправлен</span>
+            </div>
+            <div v-else class="db-review-card__no-reply">
+              <v-icon icon="mdi-message-alert-outline" size="12" />
+              <span>Без ответа</span>
             </div>
           </v-card>
         </v-col>
@@ -1375,5 +1369,273 @@ const reviews = [
 @keyframes db-pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }
+}
+
+/* ── Reviews Section ── */
+.db-reviews-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.db-reviews-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1a1a2e;
+}
+
+.db-reviews-subtitle {
+  font-size: 12px;
+  color: #9ca3af;
+  margin-top: 2px;
+}
+
+/* Review card */
+.db-review-card {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  transition: box-shadow 0.2s ease;
+}
+
+.db-review-card:hover {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+}
+
+.db-review-card__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.db-review-card__author {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.db-review-card__avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #ea004b, #ff4081);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.db-review-card__name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+.db-review-card__date {
+  font-size: 11px;
+  color: #9ca3af;
+  margin-top: 1px;
+}
+
+.db-review-card__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 8px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 700;
+  color: white;
+  flex-shrink: 0;
+}
+
+.db-review-card__text {
+  font-size: 13px;
+  line-height: 1.65;
+  color: #374151;
+  font-style: italic;
+  margin-bottom: 12px;
+  flex: 1;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.db-review-card__items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 12px;
+}
+
+.db-review-card__tag {
+  font-size: 10px;
+  font-weight: 500;
+  color: #6b7280;
+  background: #f3f4f6;
+  padding: 2px 8px;
+  border-radius: 5px;
+}
+
+.db-review-card__reply {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #EA004B;
+}
+
+.db-review-card__no-reply {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #F97316;
+}
+
+/* ── Dark Theme ── */
+.dark .db-orders-title {
+  color: #e4e4e7;
+}
+
+.dark .db-orders-link {
+  background: #252538;
+  border-color: #2e2e42;
+}
+
+.dark .db-orders-link:hover {
+  background: color-mix(in srgb, #EA004B 10%, #252538);
+  border-color: color-mix(in srgb, #EA004B 25%, #2e2e42);
+}
+
+.dark .db-table :deep(th) {
+  border-bottom-color: #2e2e42 !important;
+}
+
+.dark .db-table :deep(td) {
+  border-bottom-color: #2e2e42 !important;
+}
+
+.dark .db-table :deep(tr:hover td) {
+  background: #252538 !important;
+}
+
+.dark .db-table :deep(tr:last-child td) {
+  border-bottom: none !important;
+}
+
+.dark .db-order-id {
+  color: #e4e4e7;
+}
+
+.dark .db-date {
+  color: #a1a1aa;
+}
+
+.dark .db-customer-name {
+  color: #e4e4e7;
+}
+
+.dark .db-items-count {
+  color: #a1a1aa;
+  background: #252538;
+}
+
+.dark .db-price {
+  color: #e4e4e7;
+}
+
+.dark .db-status--incoming {
+  color: #60a5fa;
+  background: rgba(25, 118, 210, 0.15);
+}
+
+.dark .db-status--preparing {
+  color: #fb923c;
+  background: rgba(249, 115, 22, 0.15);
+}
+
+.dark .db-status--ready {
+  color: #4ade80;
+  background: rgba(22, 163, 74, 0.15);
+}
+
+.dark .db-status--completed {
+  color: #71717a;
+  background: #252538;
+}
+
+.dark .db-status--rejected {
+  color: #f87171;
+  background: rgba(220, 38, 38, 0.15);
+}
+
+.dark .db-reviews-title {
+  color: #e4e4e7;
+}
+
+.dark .db-review-card__name {
+  color: #e4e4e7;
+}
+
+.dark .db-review-card__text {
+  color: #a1a1aa;
+}
+
+.dark .db-review-card__tag {
+  color: #a1a1aa;
+  background: #252538;
+}
+
+/* ── Responsive ── */
+.db-page {
+  padding: 24px 32px;
+}
+
+.db-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.db-page-title {
+  font-size: 18px;
+}
+
+@media (max-width: 767px) {
+  .db-page {
+    padding: 16px;
+  }
+
+  .db-page-title {
+    font-size: 15px;
+  }
+
+  .db-orders-header {
+    padding: 14px 16px 10px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .db-table :deep(th),
+  .db-table :deep(td) {
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+    font-size: 12px !important;
+  }
+
+  .db-review-card {
+    min-width: 240px;
+  }
 }
 </style>

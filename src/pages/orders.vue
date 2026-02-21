@@ -249,7 +249,7 @@ const statusFilterCounts = computed(() => ({
 </script>
 
 <template>
-  <div class="px-8 py-6">
+  <div class="ot-page">
     <!-- Top section: Stats + Charts -->
     <v-row dense class="mb-6">
       <!-- Stat cards 2x2 grid -->
@@ -680,5 +680,109 @@ const statusFilterCounts = computed(() => ({
 @keyframes pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }
+}
+
+/* ── Dark Theme ── */
+.dark .ot-filter {
+  color: #a1a1aa;
+}
+
+.dark .ot-filter:hover {
+  background: #252538;
+}
+
+.dark .ot-filter__count {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.dark .ot-search :deep(.v-field) {
+  background: #252538 !important;
+}
+
+.dark .ot-table :deep(td) {
+  border-bottom-color: #2e2e42 !important;
+}
+
+.dark .ot-table :deep(tr:hover td) {
+  background: #252538 !important;
+}
+
+.dark .ot-order-id {
+  color: #e4e4e7;
+}
+
+.dark .ot-date {
+  color: #a1a1aa;
+}
+
+.dark .ot-customer-name {
+  color: #e4e4e7;
+}
+
+.dark .ot-items-count {
+  color: #a1a1aa;
+  background: #252538;
+}
+
+.dark .ot-price {
+  color: #e4e4e7;
+}
+
+.dark .ot-status--incoming {
+  color: #60a5fa;
+  background: rgba(25, 118, 210, 0.15);
+}
+
+.dark .ot-status--preparing {
+  color: #fb923c;
+  background: rgba(249, 115, 22, 0.15);
+}
+
+.dark .ot-status--ready {
+  color: #4ade80;
+  background: rgba(22, 163, 74, 0.15);
+}
+
+.dark .ot-status--completed {
+  color: #71717a;
+  background: #252538;
+}
+
+.dark .ot-status--rejected {
+  color: #f87171;
+  background: rgba(220, 38, 38, 0.15);
+}
+
+/* ── Page wrapper ── */
+.ot-page {
+  padding: 24px 32px;
+}
+
+/* ── Responsive ── */
+@media (max-width: 767px) {
+  .ot-page {
+    padding: 16px;
+  }
+
+  .ot-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 12px 14px;
+    gap: 10px;
+  }
+
+  .ot-filters {
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+
+  .ot-filter {
+    font-size: 12px;
+    padding: 5px 10px;
+  }
+
+  .ot-search {
+    max-width: 100%;
+  }
 }
 </style>

@@ -116,6 +116,7 @@ const stoppedItems = computed(
             color="#fff"
             rounded="lg"
             prepend-icon="mdi-shape-outline"
+            class="menu-btn-sec"
             @click="categoriesDialog = true"
           >
             Категории
@@ -124,6 +125,7 @@ const stoppedItems = computed(
             color="#fff"
             rounded="lg"
             prepend-icon="mdi-tune-variant"
+            class="menu-btn-sec"
             @click="modifiersDialog = true"
           >
             Модификаторы
@@ -677,5 +679,114 @@ const stoppedItems = computed(
 .mt-action--danger:hover {
   background: #fef2f2;
   color: #dc2626;
+}
+
+/* ── Dark Theme ── */
+.dark .menu-header__title {
+  color: #e4e4e7;
+}
+
+.dark .menu-btn-sec {
+  background-color: #252538 !important;
+  color: #e4e4e7 !important;
+}
+
+.dark .menu-cat-chip {
+  color: #a1a1aa;
+  background: #1e1e2e;
+  border-color: #2e2e42;
+}
+
+.dark .menu-cat-chip:hover {
+  background: #252538;
+  border-color: #3f3f5a;
+}
+
+.dark .menu-cat-chip__count {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.dark .menu-bulk {
+  background: rgba(25, 118, 210, 0.12);
+}
+
+.dark .menu-bulk__count {
+  color: #60a5fa;
+}
+
+.dark .menu-search :deep(.v-field) {
+  background: #252538 !important;
+}
+
+.dark .mt-table :deep(td) {
+  border-bottom-color: #2e2e42 !important;
+}
+
+.dark .mt-table :deep(tr:hover td) {
+  background: #252538 !important;
+}
+
+.dark .mt-img {
+  background: #252538;
+}
+
+.dark .mt-info__name {
+  color: #e4e4e7;
+}
+
+.dark .mt-category {
+  color: #a1a1aa;
+  background: #252538;
+}
+
+.dark .mt-price {
+  color: #e4e4e7;
+}
+
+.dark .mt-status--on {
+  color: #4ade80;
+  background: rgba(22, 163, 74, 0.15);
+}
+
+.dark .mt-status--off {
+  color: #f87171;
+  background: rgba(220, 38, 38, 0.15);
+}
+
+.dark .mt-action:hover {
+  background: #252538;
+  color: #e4e4e7;
+}
+
+.dark .mt-action--danger:hover {
+  background: rgba(220, 38, 38, 0.15);
+  color: #f87171;
+}
+
+/* ── Responsive ── */
+@media (max-width: 767px) {
+  .menu-page {
+    padding: 0 16px 24px;
+  }
+
+  .menu-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .menu-toolbar {
+    flex-wrap: wrap;
+  }
+
+  .menu-search {
+    max-width: 100%;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .menu-grid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  }
 }
 </style>

@@ -142,6 +142,22 @@ export interface RestaurantProfile {
   cuisineTypes: string[]
 }
 
+// ===== Отзывы =====
+
+export interface Review {
+  id: number
+  author: string
+  avatar?: string
+  rating: number
+  text: string
+  date: string
+  orderType: OrderType
+  orderNumber: number
+  items: string[]
+  reply?: string
+  repliedAt?: string
+}
+
 // ===== Статусы заказов =====
 
 export const ORDER_STATUS_LABELS: Record<PartnerOrderStatus, string> = {
