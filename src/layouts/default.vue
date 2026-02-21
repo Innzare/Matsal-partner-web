@@ -59,10 +59,10 @@ const mainNavRoutes = [
   { path: "/dashboard", title: "Дашборд", icon: "mdi-view-dashboard-outline" },
   { path: "/orders", title: "Заказы", icon: "mdi-receipt-text-outline" },
   { path: "/menu", title: "Меню", icon: "mdi-food-outline" },
-  { path: "/reviews", title: "Отзывы", icon: "mdi-star-outline" },
 ];
 
 const secondaryNavRoutes = [
+  { path: "/reviews", title: "Отзывы", icon: "mdi-star-outline" },
   {
     path: "/notifications",
     title: "Уведомления",
@@ -322,7 +322,11 @@ const confirmLogout = async () => {
                 <span class="lyt-header-badge">3</span>
               </button>
 
-              <button v-if="!isMobile" class="lyt-header-icon-btn" @click="goToSettings">
+              <button
+                v-if="!isMobile"
+                class="lyt-header-icon-btn"
+                @click="goToSettings"
+              >
                 <v-icon icon="mdi-cog-outline" size="20" />
               </button>
 
