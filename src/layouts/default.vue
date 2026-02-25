@@ -61,6 +61,13 @@ const mainNavRoutes = [
   { path: "/menu", title: "Меню", icon: "mdi-food-outline" },
 ];
 
+const marketingNavRoutes = [
+  { path: "/promotion", title: "Продвижение", icon: "mdi-rocket-launch-outline" },
+  { path: "/push-campaigns", title: "Push-рассылки", icon: "mdi-bell-badge-outline" },
+  { path: "/search-boost", title: "Буст в поиске", icon: "mdi-trending-up" },
+  { path: "/badges", title: "Бейджи", icon: "mdi-shield-star-outline" },
+];
+
 const secondaryNavRoutes = [
   { path: "/reviews", title: "Отзывы", icon: "mdi-star-outline" },
   {
@@ -79,6 +86,10 @@ const routeTitles: Record<string, string> = {
   "/menu": "Меню",
   "/orders": "Заказы",
   "/reviews": "Отзывы",
+  "/promotion": "Продвижение",
+  "/push-campaigns": "Push-рассылки",
+  "/search-boost": "Буст в поиске",
+  "/badges": "Бейдж «Рекомендуемое»",
   "/settings": "Настройки",
 };
 
@@ -88,6 +99,10 @@ const routeSubtitles: Record<string, string> = {
   "/menu": "Управление позициями и категориями",
   "/reviews": "Отзывы клиентов",
   "/notifications": "Центр уведомлений",
+  "/promotion": "Реклама и размещение в приложении",
+  "/push-campaigns": "Отправка push-уведомлений клиентам",
+  "/search-boost": "Платное повышение позиции в поиске",
+  "/badges": "Бейдж рекомендуемого заведения",
   "/settings": "Настройки ресторана",
 };
 
@@ -172,6 +187,36 @@ const confirmLogout = async () => {
           <nav class="lyt-nav">
             <v-tooltip
               v-for="item in mainNavRoutes"
+              :key="item.path"
+              :text="item.title"
+              location="end"
+              :disabled="!collapsed"
+            >
+              <template #activator="{ props: tip }">
+                <router-link
+                  :to="item.path"
+                  class="lyt-nav-item"
+                  :class="{ 'lyt-nav-item--active': isActive(item.path) }"
+                  v-bind="tip"
+                >
+                  <div
+                    :style="{ display: 'flex', gap: collapsed ? '0' : '12px' }"
+                  >
+                    <v-icon :icon="item.icon" size="20" />
+                    <span class="lyt-nav-text">{{ item.title }}</span>
+                  </div>
+                </router-link>
+              </template>
+            </v-tooltip>
+          </nav>
+        </div>
+
+        <!-- Marketing nav -->
+        <div class="lyt-nav-section">
+          <p class="lyt-nav-label">Маркетинг</p>
+          <nav class="lyt-nav">
+            <v-tooltip
+              v-for="item in marketingNavRoutes"
               :key="item.path"
               :text="item.title"
               location="end"

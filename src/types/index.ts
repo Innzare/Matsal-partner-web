@@ -213,3 +213,306 @@ export const NOTIFICATION_TYPE_COLORS: Record<NotificationType, string> = {
   order_rejected:'#ef4444',
   system:        '#8b5cf6',
 }
+
+// ===== Продвижение =====
+
+export type PromoSlot =
+  | 'promo_banner'
+  | 'popular_brands'
+  | 'near_you'
+  | 'often_order'
+  | 'top_category'
+  | 'app_open_modal'
+  | 'timed_popup'
+  | 'special_offers'
+
+export type PromoStatus = 'active' | 'pending' | 'expired' | 'cancelled'
+
+export interface PromoPlacement {
+  id: string
+  slot: PromoSlot
+  status: PromoStatus
+  startDate: string
+  endDate: string
+  duration: number
+  price: number
+  impressions: number
+  clicks: number
+  createdAt: string
+}
+
+export interface PromoSlotInfo {
+  slot: PromoSlot
+  title: string
+  description: string
+  icon: string
+  color: string
+  /** Цена за 7 дней и за 14 дней — быстрые пресеты */
+  price7: number
+  price14: number
+  /** Цена за 1 день для расчёта кастомного срока */
+  pricePerDay: number
+  maxImpressions: string
+}
+
+export const PROMO_SLOTS: PromoSlotInfo[] = [
+  {
+    slot: 'promo_banner',
+    title: 'Промо-баннер',
+    description: 'Баннер в карусели на главном экране — максимальная видимость',
+    icon: 'mdi-image-area',
+    color: '#ea004b',
+    price7: 6500,
+    price14: 11500,
+    pricePerDay: 1100,
+    maxImpressions: '~50 000',
+  },
+  {
+    slot: 'popular_brands',
+    title: 'Популярные бренды',
+    description: 'Логотип в секции «Популярные бренды» на главной',
+    icon: 'mdi-fire',
+    color: '#f97316',
+    price7: 3900,
+    price14: 6800,
+    pricePerDay: 650,
+    maxImpressions: '~30 000',
+  },
+  {
+    slot: 'near_you',
+    title: 'Рядом с вами',
+    description: 'Приоритетное размещение в секции «Рядом с вами»',
+    icon: 'mdi-map-marker-radius',
+    color: '#3b82f6',
+    price7: 2550,
+    price14: 4500,
+    pricePerDay: 430,
+    maxImpressions: '~20 000',
+  },
+  {
+    slot: 'often_order',
+    title: 'Часто заказывают',
+    description: 'Попадание в секцию «Часто заказывают» для новых клиентов',
+    icon: 'mdi-repeat',
+    color: '#22c55e',
+    price7: 3000,
+    price14: 5200,
+    pricePerDay: 500,
+    maxImpressions: '~25 000',
+  },
+  {
+    slot: 'top_category',
+    title: 'Топ в категории',
+    description: 'Первое место при фильтре по вашей категории кухни',
+    icon: 'mdi-trophy-outline',
+    color: '#eab308',
+    price7: 1900,
+    price14: 3400,
+    pricePerDay: 320,
+    maxImpressions: '~15 000',
+  },
+  {
+    slot: 'app_open_modal',
+    title: 'Модалка при открытии',
+    description: 'Полноэкранное модальное окно при запуске приложения — максимальный охват',
+    icon: 'mdi-cellphone-screenshot',
+    color: '#8b5cf6',
+    price7: 8300,
+    price14: 14700,
+    pricePerDay: 1400,
+    maxImpressions: '~60 000',
+  },
+  {
+    slot: 'timed_popup',
+    title: 'Всплывающее окно',
+    description: 'Попап через 30 сек. после входа — высокая вовлечённость',
+    icon: 'mdi-timer-outline',
+    color: '#06b6d4',
+    price7: 4800,
+    price14: 8400,
+    pricePerDay: 800,
+    maxImpressions: '~35 000',
+  },
+  {
+    slot: 'special_offers',
+    title: 'Спецпредложения',
+    description: 'Карточка в секции «Спецпредложения» с бейджем скидки',
+    icon: 'mdi-tag-multiple-outline',
+    color: '#ec4899',
+    price7: 2250,
+    price14: 4000,
+    pricePerDay: 380,
+    maxImpressions: '~18 000',
+  },
+]
+
+export const PROMO_STATUS_LABELS: Record<PromoStatus, string> = {
+  active: 'Активно',
+  pending: 'Ожидание',
+  expired: 'Истекло',
+  cancelled: 'Отменено',
+}
+
+export const PROMO_STATUS_COLORS: Record<PromoStatus, string> = {
+  active: 'green',
+  pending: 'orange',
+  expired: 'grey',
+  cancelled: 'red',
+}
+
+// ===== Push-рассылки =====
+
+export type PushAudience = 'all' | 'recent' | 'inactive'
+
+export const PUSH_AUDIENCE_LABELS: Record<PushAudience, string> = {
+  all: 'Все клиенты',
+  recent: 'Активные (30 дн.)',
+  inactive: 'Давно не заказывали',
+}
+
+export type PushScheduleMode = 'now' | 'scheduled'
+
+export type PushCampaignStatus = 'draft' | 'sending' | 'sent' | 'scheduled' | 'cancelled'
+
+export const PUSH_STATUS_LABELS: Record<PushCampaignStatus, string> = {
+  draft: 'Черновик',
+  sending: 'Отправляется',
+  sent: 'Отправлено',
+  scheduled: 'Запланировано',
+  cancelled: 'Отменено',
+}
+
+export const PUSH_STATUS_COLORS: Record<PushCampaignStatus, string> = {
+  draft: 'grey',
+  sending: 'blue',
+  sent: 'green',
+  scheduled: 'orange',
+  cancelled: 'red',
+}
+
+export interface PushCampaign {
+  id: string
+  title: string
+  body: string
+  imageUrl?: string
+  audience: PushAudience
+  scheduleMode: PushScheduleMode
+  scheduledAt?: string
+  status: PushCampaignStatus
+  createdAt: string
+  sentAt?: string
+  sent: number
+  delivered: number
+  opened: number
+  clicked: number
+}
+
+// ===== Буст в поиске =====
+
+export type BoostLevel = 'standard' | 'pro' | 'top3'
+
+export interface BoostLevelInfo {
+  level: BoostLevel
+  title: string
+  description: string
+  positionBoost: number
+  pricePerDay: number
+  icon: string
+  color: string
+}
+
+export const BOOST_LEVELS: BoostLevelInfo[] = [
+  {
+    level: 'standard',
+    title: 'Стандарт',
+    description: 'Поднимает позицию на 10 мест в общей выдаче',
+    positionBoost: 10,
+    pricePerDay: 290,
+    icon: 'mdi-trending-up',
+    color: '#3b82f6',
+  },
+  {
+    level: 'pro',
+    title: 'Про',
+    description: 'Поднимает позицию на 25 мест — значительный прирост видимости',
+    positionBoost: 25,
+    pricePerDay: 590,
+    icon: 'mdi-rocket-launch',
+    color: '#8b5cf6',
+  },
+  {
+    level: 'top3',
+    title: 'Топ-3',
+    description: 'Гарантирует место в тройке лидеров в вашей категории',
+    positionBoost: 999,
+    pricePerDay: 990,
+    icon: 'mdi-trophy',
+    color: '#ea004b',
+  },
+]
+
+export type BoostStatus = 'active' | 'pending' | 'expired' | 'cancelled'
+
+export const BOOST_STATUS_LABELS: Record<BoostStatus, string> = {
+  active: 'Активен',
+  pending: 'Ожидание',
+  expired: 'Истёк',
+  cancelled: 'Отменён',
+}
+
+export const BOOST_STATUS_COLORS: Record<BoostStatus, string> = {
+  active: 'green',
+  pending: 'orange',
+  expired: 'grey',
+  cancelled: 'red',
+}
+
+export interface SearchBoostSubscription {
+  id: string
+  level: BoostLevel
+  status: BoostStatus
+  startDate: string
+  endDate: string
+  duration: number
+  price: number
+  positionBefore: number
+  positionAfter: number
+  viewsGained: number
+  ordersGained: number
+  createdAt: string
+}
+
+// ===== Бейдж «Рекомендуемое» =====
+
+export type BadgeStatus = 'active' | 'inactive' | 'pending' | 'expired'
+
+export const BADGE_STATUS_LABELS: Record<BadgeStatus, string> = {
+  active: 'Активен',
+  inactive: 'Неактивен',
+  pending: 'Ожидание',
+  expired: 'Истёк',
+}
+
+export const BADGE_STATUS_COLORS: Record<BadgeStatus, string> = {
+  active: 'green',
+  inactive: 'grey',
+  pending: 'orange',
+  expired: 'grey',
+}
+
+export interface BadgePurchase {
+  id: string
+  status: BadgeStatus
+  startDate: string
+  endDate: string
+  duration: number
+  price: number
+  impressions: number
+  extraClicks: number
+  conversionLift: number
+  createdAt: string
+}
+
+export const BADGE_PRICE_PER_DAY = 450
+export const BADGE_PRICE_7 = 2800
+export const BADGE_PRICE_14 = 5200

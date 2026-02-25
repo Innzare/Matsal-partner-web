@@ -1011,9 +1011,7 @@ function copyAllSchedule(sourceDay: WeekDay) {
                 Активные сессии
               </p>
 
-              <div
-                class="d-flex align-center ga-3 pa-3 rounded-lg session-row"
-              >
+              <div class="d-flex align-center ga-3 pa-3 rounded-lg session-row">
                 <v-icon icon="mdi-monitor" size="24" color="green" />
                 <div style="flex: 1">
                   <p class="text-body-2 font-weight-medium">Текущая сессия</p>
@@ -1063,6 +1061,7 @@ function copyAllSchedule(sourceDay: WeekDay) {
 .settings-header {
   display: flex;
   align-items: center;
+  gap: 20px;
   /* justify-content: space-between; */
   margin-bottom: 24px;
 }
@@ -1088,6 +1087,9 @@ function copyAllSchedule(sourceDay: WeekDay) {
 
 /* ── Sidebar ── */
 .settings-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   width: 200px;
   flex-shrink: 0;
   background: #fff;

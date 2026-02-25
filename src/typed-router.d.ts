@@ -19,12 +19,16 @@ declare module 'vue-router/auto-routes' {
    */
   export interface RouteNamedMap {
     '/': RouteRecordInfo<'/', '/', Record<never, never>, Record<never, never>>,
+    '/badges': RouteRecordInfo<'/badges', '/badges', Record<never, never>, Record<never, never>>,
     '/dashboard': RouteRecordInfo<'/dashboard', '/dashboard', Record<never, never>, Record<never, never>>,
     '/login': RouteRecordInfo<'/login', '/login', Record<never, never>, Record<never, never>>,
     '/menu': RouteRecordInfo<'/menu', '/menu', Record<never, never>, Record<never, never>>,
     '/notifications': RouteRecordInfo<'/notifications', '/notifications', Record<never, never>, Record<never, never>>,
     '/orders': RouteRecordInfo<'/orders', '/orders', Record<never, never>, Record<never, never>>,
+    '/promotion': RouteRecordInfo<'/promotion', '/promotion', Record<never, never>, Record<never, never>>,
+    '/push-campaigns': RouteRecordInfo<'/push-campaigns', '/push-campaigns', Record<never, never>, Record<never, never>>,
     '/reviews': RouteRecordInfo<'/reviews', '/reviews', Record<never, never>, Record<never, never>>,
+    '/search-boost': RouteRecordInfo<'/search-boost', '/search-boost', Record<never, never>, Record<never, never>>,
     '/settings': RouteRecordInfo<'/settings', '/settings', Record<never, never>, Record<never, never>>,
   }
 
@@ -41,6 +45,10 @@ declare module 'vue-router/auto-routes' {
   export interface _RouteFileInfoMap {
     'src/pages/index.vue': {
       routes: '/'
+      views: never
+    }
+    'src/pages/badges.vue': {
+      routes: '/badges'
       views: never
     }
     'src/pages/dashboard.vue': {
@@ -63,8 +71,20 @@ declare module 'vue-router/auto-routes' {
       routes: '/orders'
       views: never
     }
+    'src/pages/promotion.vue': {
+      routes: '/promotion'
+      views: never
+    }
+    'src/pages/push-campaigns.vue': {
+      routes: '/push-campaigns'
+      views: never
+    }
     'src/pages/reviews.vue': {
       routes: '/reviews'
+      views: never
+    }
+    'src/pages/search-boost.vue': {
+      routes: '/search-boost'
       views: never
     }
     'src/pages/settings.vue': {
