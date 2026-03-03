@@ -8,9 +8,9 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   edit: [item: MenuItem]
-  delete: [id: number]
-  toggleAvailability: [id: number]
-  select: [id: number]
+  delete: [id: string]
+  toggleAvailability: [id: string]
+  select: [id: string]
 }>()
 </script>
 

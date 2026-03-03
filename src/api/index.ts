@@ -4,7 +4,7 @@ const IS_MOCK = !API_URL
 export { IS_MOCK }
 
 function getToken(): string | null {
-  return localStorage.getItem('token')
+  return localStorage.getItem('accessToken')
 }
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
@@ -27,10 +27,30 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   return response.json()
 }
 
+async function upload<T>(path: string, formData: FormData): Promise<T> {
+  const token = getToken()
+
+  const response = await fetch(`${API_URL}${path}`, {
+    method: 'POST',
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: formData,
+  })
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ message: 'Ошибка сервера' }))
+    throw new Error(error.message || `HTTP ${response.status}`)
+  }
+
+  return response.json()
+}
+
 export const api = {
   get: <T>(path: string) => request<T>('GET', path),
   post: <T>(path: string, body?: unknown) => request<T>('POST', path, body),
   put: <T>(path: string, body?: unknown) => request<T>('PUT', path, body),
   patch: <T>(path: string, body?: unknown) => request<T>('PATCH', path, body),
   delete: <T>(path: string) => request<T>('DELETE', path),
+  upload: <T>(path: string, formData: FormData) => upload<T>(path, formData),
 }

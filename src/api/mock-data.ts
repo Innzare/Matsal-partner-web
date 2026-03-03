@@ -270,9 +270,11 @@ export const MOCK_RESTAURANT: RestaurantProfile = {
   description: 'Ресторан грузинской кухни. Традиционные блюда, приготовленные по семейным рецептам с использованием свежих продуктов.',
   address: 'пр. Кадырова 30',
   phone: '+7 (938) 000-00-01',
-  coverImage: 'https://img.freepik.com/free-photo/top-view-table-full-delicious-food-composition_23-2149141353.jpg?w=1380',
+  imageUrl: 'https://img.freepik.com/free-photo/top-view-table-full-delicious-food-composition_23-2149141353.jpg?w=1380',
+  logo: null,
   rating: 4.7,
   reviewsCount: 253,
+  isActive: true,
   isOpen: true,
   workingHours: {
     monday: { open: '10:00', close: '23:00', isOpen: true },
@@ -286,6 +288,8 @@ export const MOCK_RESTAURANT: RestaurantProfile = {
   deliveryTime: '35-40',
   minOrderAmount: 500,
   cuisineTypes: ['Грузинская', 'Кавказская', 'Европейская'],
+  createdAt: '2025-01-01T00:00:00.000Z',
+  updatedAt: '2025-01-01T00:00:00.000Z',
 }
 
 // ===== Отзывы =====

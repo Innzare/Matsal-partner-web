@@ -145,7 +145,7 @@ const features = [
 
         <div class="auth-hint">
           <v-icon size="14" color="grey-darken-1">mdi-information-outline</v-icon>
-          <span>Тестовый вход: <code>admin@restaurant.com</code> / <code>password123</code></span>
+          <span>Используйте данные, полученные на email при одобрении заявки</span>
         </div>
       </div>
     </div>

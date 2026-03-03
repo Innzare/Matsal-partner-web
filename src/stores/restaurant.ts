@@ -1,8 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { RestaurantProfile } from '@/types'
-import { IS_MOCK } from '@/api'
-import { MOCK_RESTAURANT } from '@/api/mock-data'
+import { api } from '@/api'
 
 export const useRestaurantStore = defineStore('restaurant', () => {
   const restaurant = ref<RestaurantProfile | null>(null)
@@ -13,12 +12,8 @@ export const useRestaurantStore = defineStore('restaurant', () => {
     if (!force && restaurant.value) return
     isLoading.value = true
     try {
-      if (IS_MOCK) {
-        await new Promise(r => setTimeout(r, 200))
-        restaurant.value = structuredClone(MOCK_RESTAURANT)
-        return
-      }
-      // TODO: real API
+      const data = await api.get<RestaurantProfile>('/auth/restaurant/my-restaurant')
+      restaurant.value = data
     } finally {
       isLoading.value = false
     }
@@ -28,15 +23,28 @@ export const useRestaurantStore = defineStore('restaurant', () => {
     if (!restaurant.value) return
     isSaving.value = true
     try {
-      if (IS_MOCK) {
-        await new Promise(r => setTimeout(r, 500))
-        restaurant.value = { ...restaurant.value, ...data }
-        return
-      }
-      // TODO: real API
+      const updated = await api.patch<RestaurantProfile>('/auth/restaurant/my-restaurant', data)
+      restaurant.value = updated
     } finally {
       isSaving.value = false
     }
+  }
+
+  const uploadImage = async (file: File, type: 'logo' | 'cover') => {
+    if (!restaurant.value) return
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('type', type)
+    const updated = await api.upload<RestaurantProfile>('/auth/restaurant/upload-image', formData)
+    restaurant.value = updated
+    return updated
+  }
+
+  const deleteImage = async (type: 'logo' | 'cover') => {
+    if (!restaurant.value) return
+    const updated = await api.delete<RestaurantProfile>(`/auth/restaurant/delete-image?type=${type}`)
+    restaurant.value = updated
+    return updated
   }
 
   const toggleOpen = async () => {
@@ -50,6 +58,8 @@ export const useRestaurantStore = defineStore('restaurant', () => {
     isSaving,
     loadRestaurant,
     updateRestaurant,
+    uploadImage,
+    deleteImage,
     toggleOpen,
   }
 })

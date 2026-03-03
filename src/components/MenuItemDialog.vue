@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import type { MenuItem, MenuCategory, ModifierGroup, Allergen } from '@/types'
 import { ALLERGEN_LABELS } from '@/types'
+import { useMenuStore } from '@/stores/menu'
 
 const props = defineProps<{
   modelValue: boolean
@@ -11,22 +12,28 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
-  save: [data: Omit<MenuItem, 'id' | 'sortOrder'>]
+  save: [data: Omit<MenuItem, 'id' | 'sortOrder'>, pendingImage?: File]
 }>()
+
+const menuStore = useMenuStore()
 
 const isEdit = computed(() => !!props.item)
 const formRef = ref()
+const fileInputRef = ref<HTMLInputElement>()
+const pendingImageFile = ref<File | null>(null)
+const pendingImagePreview = ref<string | null>(null)
+const imageUploading = ref(false)
 
 const form = ref({
   name: '',
   description: '',
   price: 0,
   weight: 0,
-  category: null as number | null,
+  categoryId: null as string | null,
   image: '',
   available: true,
-  allergens: [] as Allergen[],
-  modifierGroups: [] as number[],
+  allergens: [] as string[],
+  modifierGroups: [] as string[],
   calories: null as number | null,
   protein: null as number | null,
   fat: null as number | null,
@@ -58,7 +65,7 @@ watch(() => props.item, (item) => {
       description: item.description,
       price: item.price,
       weight: item.weight,
-      category: item.category,
+      categoryId: item.categoryId,
       image: item.image || '',
       available: item.available,
       allergens: [...item.allergens],
@@ -79,7 +86,7 @@ function resetForm() {
     description: '',
     price: 0,
     weight: 0,
-    category: null,
+    categoryId: null,
     image: '',
     available: true,
     allergens: [],
@@ -89,7 +96,60 @@ function resetForm() {
     fat: null,
     carbs: null,
   }
+  clearPendingImage()
 }
+
+function clearPendingImage() {
+  pendingImageFile.value = null
+  if (pendingImagePreview.value) {
+    URL.revokeObjectURL(pendingImagePreview.value)
+    pendingImagePreview.value = null
+  }
+}
+
+function onFileChange(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+
+  clearPendingImage()
+
+  if (isEdit.value && props.item) {
+    // При редактировании — загружаем сразу
+    imageUploading.value = true
+    menuStore.uploadItemImage(props.item.id, file)
+      .then((updated) => {
+        form.value.image = updated.image || ''
+      })
+      .catch(() => {})
+      .finally(() => { imageUploading.value = false })
+  } else {
+    // При создании — сохраняем для загрузки после создания
+    pendingImageFile.value = file
+    pendingImagePreview.value = URL.createObjectURL(file)
+  }
+
+  input.value = ''
+}
+
+async function onDeleteImage() {
+  if (isEdit.value && props.item) {
+    imageUploading.value = true
+    try {
+      await menuStore.deleteItemImage(props.item.id)
+      form.value.image = ''
+    } catch {}
+    finally { imageUploading.value = false }
+  } else {
+    clearPendingImage()
+    form.value.image = ''
+  }
+}
+
+const displayImage = computed(() => {
+  if (pendingImagePreview.value) return pendingImagePreview.value
+  return form.value.image || null
+})
 
 async function handleSave() {
   const { valid } = await formRef.value.validate()
@@ -110,14 +170,15 @@ async function handleSave() {
     description: form.value.description,
     price: form.value.price,
     weight: form.value.weight,
-    category: form.value.category!,
+    categoryId: form.value.categoryId!,
     image: form.value.image || undefined,
     available: form.value.available,
     allergens: form.value.allergens,
     modifierGroups: form.value.modifierGroups,
     nutrition,
-  })
+  }, pendingImageFile.value || undefined)
 
+  clearPendingImage()
   emit('update:modelValue', false)
 }
 
@@ -193,7 +254,7 @@ function close() {
                 style="flex: 1"
               />
               <v-select
-                v-model="form.category"
+                v-model="form.categoryId"
                 :items="categoryOptions"
                 item-value="value"
                 item-title="title"
@@ -210,28 +271,39 @@ function close() {
           <!-- Section: Image -->
           <div class="mid-section">
             <p class="mid-section__title">Изображение</p>
-            <div class="d-flex ga-4 align-center">
-              <div class="mid-img-preview">
-                <v-img v-if="form.image" :src="form.image" width="100" height="80" cover rounded="lg">
+            <input
+              ref="fileInputRef"
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              style="display: none"
+              @change="onFileChange"
+            />
+            <div class="mid-img-area">
+              <div v-if="displayImage" class="mid-img-preview-wrap">
+                <v-img :src="displayImage" width="160" height="120" cover rounded="lg">
                   <template v-slot:error>
                     <div class="d-flex align-center justify-center h-100 bg-grey-lighten-3">
                       <v-icon icon="mdi-image-off" size="20" color="grey" />
                     </div>
                   </template>
                 </v-img>
-                <div v-else class="mid-img-placeholder">
-                  <v-icon icon="mdi-image-plus-outline" size="24" color="grey-lighten-1" />
+                <div class="mid-img-actions">
+                  <button class="mid-img-btn" type="button" @click="fileInputRef?.click()">
+                    <v-icon icon="mdi-pencil" size="14" />
+                  </button>
+                  <button class="mid-img-btn mid-img-btn--danger" type="button" @click="onDeleteImage">
+                    <v-icon icon="mdi-delete-outline" size="14" />
+                  </button>
+                </div>
+                <div v-if="imageUploading" class="mid-img-loader">
+                  <v-progress-circular size="24" width="2" indeterminate color="white" />
                 </div>
               </div>
-              <v-text-field
-                v-model="form.image"
-                label="URL изображения"
-                variant="outlined"
-                density="comfortable"
-                hide-details
-                prepend-inner-icon="mdi-link"
-                style="flex: 1"
-              />
+              <div v-else class="mid-img-upload" @click="fileInputRef?.click()">
+                <v-icon icon="mdi-cloud-upload-outline" size="28" color="grey-lighten-1" />
+                <span class="mid-img-upload__text">Нажмите для загрузки</span>
+                <span class="mid-img-upload__hint">JPG, PNG, WebP, GIF до 5 МБ</span>
+              </div>
             </div>
           </div>
 
@@ -417,20 +489,90 @@ function close() {
   color: #9ca3af;
 }
 
-/* ── Image preview ── */
-.mid-img-preview {
-  flex-shrink: 0;
+/* ── Image upload ── */
+.mid-img-area {
+  display: flex;
 }
 
-.mid-img-placeholder {
-  width: 100px;
-  height: 80px;
+.mid-img-preview-wrap {
+  position: relative;
   border-radius: 12px;
-  border: 2px dashed #e5e7eb;
+  overflow: hidden;
+}
+
+.mid-img-actions {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.mid-img-preview-wrap:hover .mid-img-actions {
+  opacity: 1;
+}
+
+.mid-img-btn {
+  width: 28px;
+  height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
+  border-radius: 8px;
+  border: none;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.mid-img-btn:hover {
+  background: rgba(0, 0, 0, 0.75);
+}
+
+.mid-img-btn--danger:hover {
+  background: rgba(220, 38, 38, 0.85);
+}
+
+.mid-img-loader {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.mid-img-upload {
+  width: 100%;
+  padding: 20px;
+  border: 2px dashed #e5e7eb;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
   background: #f9fafb;
+}
+
+.mid-img-upload:hover {
+  border-color: #EA004B;
+  background: #fef2f5;
+}
+
+.mid-img-upload__text {
+  font-size: 13px;
+  font-weight: 500;
+  color: #6b7280;
+}
+
+.mid-img-upload__hint {
+  font-size: 11px;
+  color: #9ca3af;
 }
 
 /* ── Allergens ── */

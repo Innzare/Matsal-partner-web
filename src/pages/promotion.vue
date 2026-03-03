@@ -5,6 +5,9 @@ import { PROMO_SLOTS, PROMO_STATUS_LABELS, PROMO_STATUS_COLORS } from "@/types";
 
 const store = usePromotionStore();
 
+// TODO: заменить на реальную проверку подписки
+const isPremium = ref(false);
+
 onMounted(() => store.load());
 
 // ── New placement dialog ──
@@ -144,7 +147,15 @@ function formatNum(n: number) {
       </div>
 
       <div class="pm-slots-grid mb-8">
-        <div v-for="slot in PROMO_SLOTS" :key="slot.slot" class="pm-slot-card">
+        <div
+          v-for="slot in PROMO_SLOTS"
+          :key="slot.slot"
+          class="pm-slot-card"
+          :class="{
+            'pm-slot-card--premium': slot.premium,
+            'pm-slot-card--locked': slot.premium && !isPremium,
+          }"
+        >
           <div class="pm-slot-card__head">
             <div
               class="pm-slot-card__icon"
@@ -152,8 +163,19 @@ function formatNum(n: number) {
             >
               <v-icon :icon="slot.icon" size="24" />
             </div>
-            <div class="pm-slot-card__badge">
-              {{ slot.maxImpressions }} показов
+            <div class="d-flex align-center ga-2">
+              <v-chip
+                v-if="slot.premium"
+                size="x-small"
+                color="amber"
+                variant="flat"
+                prepend-icon="mdi-crown"
+              >
+                Premium
+              </v-chip>
+              <div class="pm-slot-card__badge">
+                {{ slot.maxImpressions }} показов
+              </div>
             </div>
           </div>
 
@@ -182,6 +204,7 @@ function formatNum(n: number) {
           </div>
 
           <v-btn
+            v-if="!slot.premium || isPremium"
             color="primary"
             variant="flat"
             rounded="lg"
@@ -190,6 +213,17 @@ function formatNum(n: number) {
             @click="openDialog(slot)"
           >
             Разместить
+          </v-btn>
+          <v-btn
+            v-else
+            color="amber-darken-4"
+            rounded="lg"
+            block
+            class="mt-3"
+            prepend-icon="mdi-lock"
+            disabled
+          >
+            Только Premium
           </v-btn>
         </div>
       </div>
@@ -318,7 +352,11 @@ function formatNum(n: number) {
               <span class="pm-custom-days__value">
                 {{ customDays }} дн.
                 <template v-if="customDays >= 30">
-                  ({{ Math.floor(customDays / 30) }} мес.<template v-if="customDays % 30 > 0"> {{ customDays % 30 }} дн.</template>)
+                  ({{ Math.floor(customDays / 30) }} мес.<template
+                    v-if="customDays % 30 > 0"
+                  >
+                    {{ customDays % 30 }} дн.</template
+                  >)
                 </template>
               </span>
             </div>
@@ -336,7 +374,13 @@ function formatNum(n: number) {
               <span>1 год</span>
             </div>
             <div v-if="customDays > 1" class="pm-custom-days__discount mt-1">
-              Скидка {{ Math.round((1 - currentPrice / (selectedSlot.pricePerDay * customDays)) * 100) }}%
+              Скидка
+              {{
+                Math.round(
+                  (1 - currentPrice / (selectedSlot.pricePerDay * customDays)) *
+                    100,
+                )
+              }}%
             </div>
           </div>
         </div>
@@ -470,6 +514,20 @@ function formatNum(n: number) {
 .pm-slot-card:hover {
   border-color: #e5e7eb;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+.pm-slot-card--premium {
+  border-color: #fbbf24;
+  background: linear-gradient(135deg, #fffbeb 0%, #fff 40%);
+}
+
+.pm-slot-card--premium:hover {
+  border-color: #f59e0b;
+  box-shadow: 0 4px 20px rgba(245, 158, 11, 0.15);
+}
+
+.pm-slot-card--locked {
+  opacity: 0.75;
 }
 
 .pm-slot-card__head {
@@ -785,6 +843,16 @@ function formatNum(n: number) {
 .dark .pm-slot-card:hover {
   border-color: #3f3f5c;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.dark .pm-slot-card--premium {
+  border-color: #92400e;
+  background: linear-gradient(135deg, #1e1a10 0%, #1e1e2e 40%);
+}
+
+.dark .pm-slot-card--premium:hover {
+  border-color: #b45309;
+  box-shadow: 0 4px 20px rgba(180, 83, 9, 0.2);
 }
 
 .dark .pm-slot-card__badge {

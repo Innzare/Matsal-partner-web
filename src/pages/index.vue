@@ -30,7 +30,7 @@ const greeting = computed(() => {
 
 // Today's working hours
 const todaySchedule = computed(() => {
-  if (!restaurantStore.restaurant) return null;
+  if (!restaurantStore.restaurant?.workingHours) return null;
   const days: WeekDay[] = [
     "sunday",
     "monday",
@@ -42,6 +42,7 @@ const todaySchedule = computed(() => {
   ];
   const today = days[new Date().getDay()]!;
   const schedule = restaurantStore.restaurant.workingHours[today];
+  if (!schedule) return null;
   return {
     day: WEEKDAY_LABELS[today],
     ...schedule,
@@ -267,32 +268,25 @@ const toggleOpen = () => {
     <v-row dense class="mb-6">
       <!-- Restaurant status card -->
       <v-col cols="12" md="6">
-        <v-card flat rounded="xl" class="pa-5 h-100">
-          <div class="d-flex align-center justify-space-between mb-4">
-            <div class="d-flex align-center ga-3">
-              <div
-                class="d-flex align-center justify-center rounded-lg"
-                :style="{
-                  width: '44px',
-                  height: '44px',
-                  backgroundColor: restaurantStore.restaurant?.isOpen
-                    ? '#e8f5e9'
-                    : '#fce4ec',
-                }"
-              >
-                <v-icon
-                  :icon="
-                    restaurantStore.restaurant?.isOpen
-                      ? 'mdi-store-check'
-                      : 'mdi-store-remove'
-                  "
-                  :color="
-                    restaurantStore.restaurant?.isOpen ? '#16a34a' : '#EA004B'
-                  "
-                  size="24"
-                />
-              </div>
-              <div>
+        <v-card flat rounded="xl" class="h-100 overflow-hidden">
+          <!-- Cover -->
+          <div class="restaurant-cover">
+            <v-img
+              v-if="restaurantStore.restaurant?.imageUrl"
+              :src="restaurantStore.restaurant.imageUrl"
+              height="120" cover
+            />
+            <div v-else class="restaurant-cover__placeholder" />
+          </div>
+
+          <div class="pa-5 pt-0">
+            <!-- Logo + Name -->
+            <div class="d-flex align-center ga-3 mb-4" style="margin-top: -28px; position: relative; z-index: 1">
+              <v-avatar size="56" color="grey-lighten-3" class="restaurant-logo-avatar">
+                <v-img v-if="restaurantStore.restaurant?.logo" :src="restaurantStore.restaurant.logo" />
+                <v-icon v-else icon="mdi-store" size="28" color="grey" />
+              </v-avatar>
+              <div style="padding-top: 28px">
                 <p class="text-subtitle-2 font-weight-bold">
                   {{ restaurantStore.restaurant?.name ?? "Ресторан" }}
                 </p>
@@ -301,7 +295,6 @@ const toggleOpen = () => {
                 </p>
               </div>
             </div>
-          </div>
 
           <div class="d-flex align-center justify-space-between mb-3">
             <span class="text-body-2">Статус</span>
@@ -355,6 +348,7 @@ const toggleOpen = () => {
             <span class="text-body-2 font-weight-medium">
               {{ restaurantStore.restaurant?.deliveryTime ?? "—" }} мин
             </span>
+          </div>
           </div>
         </v-card>
       </v-col>
@@ -528,6 +522,17 @@ const toggleOpen = () => {
 </template>
 
 <style scoped>
+/* ── Restaurant card ── */
+.restaurant-cover { height: 120px; background: #f3f4f6; }
+.restaurant-cover__placeholder {
+  height: 100%;
+  background: linear-gradient(135deg, #f3f4f6, #e5e7eb);
+}
+.restaurant-logo-avatar {
+  border: 3px solid #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
 .quick-action-card {
   transition:
     transform 0.15s ease,

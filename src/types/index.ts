@@ -71,37 +71,46 @@ export interface NutritionInfo {
 }
 
 export interface Modifier {
-  id: number
+  id: string
   name: string
   price: number
 }
 
 export interface ModifierGroup {
-  id: number
+  id: string
   name: string
   required: boolean
   maxSelect: number
   modifiers: Modifier[]
 }
 
+export type CategoryDisplayType = 'recomendation' | 'popular'
+
+export const CATEGORY_TYPE_OPTIONS: { value: string | null; title: string; color: string }[] = [
+  { value: null, title: 'Обычная', color: 'grey' },
+  { value: 'recomendation', title: 'Рекомендация', color: 'orange' },
+  { value: 'popular', title: 'Популярное', color: 'blue' },
+]
+
 export interface MenuCategory {
-  id: number
+  id: string
   name: string
+  type?: string | null
   sortOrder: number
 }
 
 export interface MenuItem {
-  id: number
+  id: string
   name: string
   description: string
   price: number
-  category: number
+  categoryId: string
   available: boolean
-  image?: string
+  image?: string | null
   weight: number
-  nutrition?: NutritionInfo
-  allergens: Allergen[]
-  modifierGroups: number[]
+  nutrition?: NutritionInfo | null
+  allergens: string[]
+  modifierGroups: string[]
   sortOrder: number
 }
 
@@ -128,18 +137,21 @@ export const WEEKDAY_LABELS: Record<WeekDay, string> = {
 export interface RestaurantProfile {
   id: string
   name: string
-  description: string
+  description: string | null
   address: string
-  phone: string
-  coverImage: string
-  logo?: string
+  phone: string | null
+  imageUrl: string | null
+  logo: string | null
   rating: number
   reviewsCount: number
+  isActive: boolean
   isOpen: boolean
-  workingHours: Record<WeekDay, DaySchedule>
-  deliveryTime: string
+  workingHours: Record<WeekDay, DaySchedule> | null
+  deliveryTime: string | null
   minOrderAmount: number
   cuisineTypes: string[]
+  createdAt: string
+  updatedAt: string
 }
 
 // ===== Отзывы =====
@@ -253,9 +265,24 @@ export interface PromoSlotInfo {
   /** Цена за 1 день для расчёта кастомного срока */
   pricePerDay: number
   maxImpressions: string
+  /** Доступен только по премиум-подписке */
+  premium?: boolean
 }
 
 export const PROMO_SLOTS: PromoSlotInfo[] = [
+  // ── Premium slots (самые посещаемые) ──
+  {
+    slot: 'app_open_modal',
+    title: 'Модалка при открытии',
+    description: 'Полноэкранное модальное окно при запуске приложения — максимальный охват',
+    icon: 'mdi-cellphone-screenshot',
+    color: '#8b5cf6',
+    price7: 8300,
+    price14: 14700,
+    pricePerDay: 1400,
+    maxImpressions: '~60 000',
+    premium: true,
+  },
   {
     slot: 'promo_banner',
     title: 'Промо-баннер',
@@ -266,7 +293,21 @@ export const PROMO_SLOTS: PromoSlotInfo[] = [
     price14: 11500,
     pricePerDay: 1100,
     maxImpressions: '~50 000',
+    premium: true,
   },
+  {
+    slot: 'timed_popup',
+    title: 'Всплывающее окно',
+    description: 'Попап через 30 сек. после входа — высокая вовлечённость',
+    icon: 'mdi-timer-outline',
+    color: '#06b6d4',
+    price7: 4800,
+    price14: 8400,
+    pricePerDay: 800,
+    maxImpressions: '~35 000',
+    premium: true,
+  },
+  // ── Стандартные слоты ──
   {
     slot: 'popular_brands',
     title: 'Популярные бренды',
@@ -277,17 +318,6 @@ export const PROMO_SLOTS: PromoSlotInfo[] = [
     price14: 6800,
     pricePerDay: 650,
     maxImpressions: '~30 000',
-  },
-  {
-    slot: 'near_you',
-    title: 'Рядом с вами',
-    description: 'Приоритетное размещение в секции «Рядом с вами»',
-    icon: 'mdi-map-marker-radius',
-    color: '#3b82f6',
-    price7: 2550,
-    price14: 4500,
-    pricePerDay: 430,
-    maxImpressions: '~20 000',
   },
   {
     slot: 'often_order',
@@ -301,37 +331,15 @@ export const PROMO_SLOTS: PromoSlotInfo[] = [
     maxImpressions: '~25 000',
   },
   {
-    slot: 'top_category',
-    title: 'Топ в категории',
-    description: 'Первое место при фильтре по вашей категории кухни',
-    icon: 'mdi-trophy-outline',
-    color: '#eab308',
-    price7: 1900,
-    price14: 3400,
-    pricePerDay: 320,
-    maxImpressions: '~15 000',
-  },
-  {
-    slot: 'app_open_modal',
-    title: 'Модалка при открытии',
-    description: 'Полноэкранное модальное окно при запуске приложения — максимальный охват',
-    icon: 'mdi-cellphone-screenshot',
-    color: '#8b5cf6',
-    price7: 8300,
-    price14: 14700,
-    pricePerDay: 1400,
-    maxImpressions: '~60 000',
-  },
-  {
-    slot: 'timed_popup',
-    title: 'Всплывающее окно',
-    description: 'Попап через 30 сек. после входа — высокая вовлечённость',
-    icon: 'mdi-timer-outline',
-    color: '#06b6d4',
-    price7: 4800,
-    price14: 8400,
-    pricePerDay: 800,
-    maxImpressions: '~35 000',
+    slot: 'near_you',
+    title: 'Рядом с вами',
+    description: 'Приоритетное размещение в секции «Рядом с вами»',
+    icon: 'mdi-map-marker-radius',
+    color: '#3b82f6',
+    price7: 2550,
+    price14: 4500,
+    pricePerDay: 430,
+    maxImpressions: '~20 000',
   },
   {
     slot: 'special_offers',
@@ -343,6 +351,17 @@ export const PROMO_SLOTS: PromoSlotInfo[] = [
     price14: 4000,
     pricePerDay: 380,
     maxImpressions: '~18 000',
+  },
+  {
+    slot: 'top_category',
+    title: 'Топ в категории',
+    description: 'Первое место при фильтре по вашей категории кухни',
+    icon: 'mdi-trophy-outline',
+    color: '#eab308',
+    price7: 1900,
+    price14: 3400,
+    pricePerDay: 320,
+    maxImpressions: '~15 000',
   },
 ]
 

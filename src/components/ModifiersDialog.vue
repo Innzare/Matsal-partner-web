@@ -9,19 +9,19 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
   add: [group: Omit<ModifierGroup, 'id'>]
-  update: [id: number, data: Partial<ModifierGroup>]
-  delete: [id: number]
+  update: [id: string, data: Partial<ModifierGroup>]
+  delete: [id: string]
 }>()
 
-const expandedId = ref<number | null>(null)
+const expandedId = ref<string | null>(null)
 const showAddForm = ref(false)
-const deleteConfirmId = ref<number | null>(null)
+const deleteConfirmId = ref<string | null>(null)
 
 // New group form
 const newGroup = ref({ name: '', required: false, maxSelect: 1 })
 
 // New modifier within a group
-const addingModToGroup = ref<number | null>(null)
+const addingModToGroup = ref<string | null>(null)
 const newMod = ref({ name: '', price: 0 })
 
 function addGroup() {
@@ -36,7 +36,7 @@ function addGroup() {
   showAddForm.value = false
 }
 
-function toggleExpand(id: number) {
+function toggleExpand(id: string) {
   expandedId.value = expandedId.value === id ? null : id
 }
 
@@ -44,23 +44,22 @@ function updateField(group: ModifierGroup, field: string, value: any) {
   emit('update', group.id, { [field]: value })
 }
 
-function addModifier(groupId: number) {
+function addModifier(groupId: string) {
   if (!newMod.value.name.trim()) return
   const group = props.modifierGroups.find(g => g.id === groupId)
   if (!group) return
-  const maxId = group.modifiers.reduce((max, m) => Math.max(max, m.id), 0)
   emit('update', groupId, {
-    modifiers: [...group.modifiers, { id: maxId + 1, name: newMod.value.name.trim(), price: newMod.value.price }],
+    modifiers: [...group.modifiers, { id: '', name: newMod.value.name.trim(), price: newMod.value.price }],
   })
   newMod.value = { name: '', price: 0 }
   addingModToGroup.value = null
 }
 
-function removeModifier(group: ModifierGroup, modId: number) {
+function removeModifier(group: ModifierGroup, modId: string) {
   emit('update', group.id, { modifiers: group.modifiers.filter(m => m.id !== modId) })
 }
 
-function confirmDelete(id: number) {
+function confirmDelete(id: string) {
   deleteConfirmId.value = id
 }
 

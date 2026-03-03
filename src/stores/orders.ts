@@ -58,12 +58,9 @@ export const useOrdersStore = defineStore('orders', () => {
     if (!force && orders.value.length > 0) return
     isLoading.value = true
     try {
-      if (IS_MOCK) {
-        await new Promise(r => setTimeout(r, 300))
-        orders.value = structuredClone(MOCK_ORDERS)
-        return
-      }
-      // TODO: real API
+      // TODO: заменить на real API когда будет готов
+      await new Promise(r => setTimeout(r, 300))
+      orders.value = structuredClone(MOCK_ORDERS)
     } finally {
       isLoading.value = false
     }

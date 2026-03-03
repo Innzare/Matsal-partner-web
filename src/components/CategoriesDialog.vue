@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import type { MenuCategory } from '@/types'
+import { CATEGORY_TYPE_OPTIONS } from '@/types'
 import draggable from 'vuedraggable'
 
 const props = defineProps<{
@@ -9,16 +10,20 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
-  add: [name: string]
-  update: [id: number, name: string]
-  delete: [id: number]
+  add: [name: string, type: string | null]
+  update: [id: string, name: string, type: string | null]
+  delete: [id: string]
   reorder: [categories: MenuCategory[]]
 }>()
 
 const newCategoryName = ref('')
-const editingId = ref<number | null>(null)
+const newCategoryType = ref<string | null>(null)
+const editingId = ref<string | null>(null)
 const editingName = ref('')
-const deleteConfirmId = ref<number | null>(null)
+const editingType = ref<string | null>(null)
+const deleteConfirmId = ref<string | null>(null)
+
+const typeOptions = CATEGORY_TYPE_OPTIONS
 
 const localCategories = ref<MenuCategory[]>([])
 
@@ -28,28 +33,38 @@ watch(() => props.categories, (cats) => {
 
 function addCategory() {
   if (newCategoryName.value.trim()) {
-    emit('add', newCategoryName.value.trim())
+    emit('add', newCategoryName.value.trim(), newCategoryType.value)
     newCategoryName.value = ''
+    newCategoryType.value = null
   }
 }
 
 function startEdit(cat: MenuCategory) {
   editingId.value = cat.id
   editingName.value = cat.name
+  editingType.value = cat.type ?? null
 }
 
 function saveEdit() {
   if (editingId.value && editingName.value.trim()) {
-    emit('update', editingId.value, editingName.value.trim())
+    emit('update', editingId.value, editingName.value.trim(), editingType.value)
     editingId.value = null
   }
+}
+
+function getTypeLabel(type?: string | null) {
+  return typeOptions.find(o => o.value === type)?.title ?? null
+}
+
+function getTypeColor(type?: string | null) {
+  return typeOptions.find(o => o.value === type)?.color ?? 'grey'
 }
 
 function cancelEdit() {
   editingId.value = null
 }
 
-function confirmDelete(id: number) {
+function confirmDelete(id: string) {
   deleteConfirmId.value = id
 }
 
@@ -72,7 +87,7 @@ function close() {
 <template>
   <v-dialog
     :model-value="modelValue"
-    max-width="480"
+    max-width="560"
     @update:model-value="emit('update:modelValue', $event)"
   >
     <v-card rounded="xl" class="cd-dialog">
@@ -98,6 +113,18 @@ function close() {
           rounded="lg"
           class="cd-add__input"
           @keyup.enter="addCategory"
+        />
+        <v-select
+          v-model="newCategoryType"
+          :items="typeOptions"
+          item-title="title"
+          item-value="value"
+          placeholder="Тип"
+          variant="outlined"
+          density="compact"
+          hide-details
+          rounded="lg"
+          class="cd-add__type"
         />
         <v-btn
           color="primary"
@@ -136,6 +163,15 @@ function close() {
                 </div>
                 <span class="cd-item__order">{{ index + 1 }}</span>
                 <span class="cd-item__name">{{ cat.name }}</span>
+                <v-chip
+                  v-if="cat.type"
+                  :color="getTypeColor(cat.type)"
+                  size="x-small"
+                  variant="tonal"
+                  class="cd-item__type-chip"
+                >
+                  {{ getTypeLabel(cat.type) }}
+                </v-chip>
                 <div class="cd-item__actions">
                   <button class="cd-item__btn" @click="startEdit(cat)">
                     <v-icon icon="mdi-pencil-outline" size="15" />
@@ -157,6 +193,16 @@ function close() {
                   class="cd-item__edit-input"
                   @keyup.enter="saveEdit"
                   @keyup.escape="cancelEdit"
+                />
+                <v-select
+                  v-model="editingType"
+                  :items="typeOptions"
+                  item-title="title"
+                  item-value="value"
+                  variant="outlined"
+                  density="compact"
+                  hide-details
+                  class="cd-item__edit-type"
                 />
                 <button class="cd-item__btn cd-item__btn--save" @click="saveEdit">
                   <v-icon icon="mdi-check" size="16" />
@@ -218,6 +264,11 @@ function close() {
 
 .cd-add__input {
   flex: 1;
+}
+
+.cd-add__type {
+  width: 160px;
+  flex-shrink: 0;
 }
 
 /* ── List ── */
@@ -283,6 +334,15 @@ function close() {
 
 .cd-item__edit-input {
   flex: 1;
+}
+
+.cd-item__edit-type {
+  width: 140px;
+  flex-shrink: 0;
+}
+
+.cd-item__type-chip {
+  flex-shrink: 0;
 }
 
 .cd-item__actions {

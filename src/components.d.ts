@@ -20,6 +20,11 @@ declare module 'vue' {
     OrderDetailsDialog: typeof import('./components/OrderDetailsDialog.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    SettingsDelivery: typeof import('./components/settings/SettingsDelivery.vue')['default']
+    SettingsNotifications: typeof import('./components/settings/SettingsNotifications.vue')['default']
+    SettingsProfile: typeof import('./components/settings/SettingsProfile.vue')['default']
+    SettingsSchedule: typeof import('./components/settings/SettingsSchedule.vue')['default']
+    SettingsSecurity: typeof import('./components/settings/SettingsSecurity.vue')['default']
     StatCard: typeof import('./components/StatCard.vue')['default']
     StatusBadge: typeof import('./components/StatusBadge.vue')['default']
   }

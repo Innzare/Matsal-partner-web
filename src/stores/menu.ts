@@ -1,14 +1,19 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { MenuItem, MenuCategory, ModifierGroup } from '@/types'
-import { IS_MOCK } from '@/api'
-import { MOCK_MENU_ITEMS, MOCK_CATEGORIES, MOCK_MODIFIER_GROUPS } from '@/api/mock-data'
+import { api } from '@/api'
+
+interface MenuResponse {
+  categories: MenuCategory[]
+  items: MenuItem[]
+  modifierGroups: ModifierGroup[]
+}
 
 export const useMenuStore = defineStore('menu', () => {
   const items = ref<MenuItem[]>([])
   const categories = ref<MenuCategory[]>([])
   const modifierGroups = ref<ModifierGroup[]>([])
-  const selectedCategory = ref<number | null>(null)
+  const selectedCategory = ref<string | null>(null)
   const isLoading = ref(false)
   const searchQuery = ref('')
 
@@ -17,7 +22,7 @@ export const useMenuStore = defineStore('menu', () => {
     let result = items.value
 
     if (selectedCategory.value !== null) {
-      result = result.filter(i => i.category === selectedCategory.value)
+      result = result.filter(i => i.categoryId === selectedCategory.value)
     }
 
     if (searchQuery.value) {
@@ -39,95 +44,120 @@ export const useMenuStore = defineStore('menu', () => {
     if (!force && items.value.length > 0) return
     isLoading.value = true
     try {
-      if (IS_MOCK) {
-        await new Promise(r => setTimeout(r, 300))
-        items.value = structuredClone(MOCK_MENU_ITEMS)
-        categories.value = structuredClone(MOCK_CATEGORIES)
-        modifierGroups.value = structuredClone(MOCK_MODIFIER_GROUPS)
-        return
-      }
-      // TODO: real API
+      const data = await api.get<MenuResponse>('/menu')
+      items.value = data.items
+      categories.value = data.categories
+      modifierGroups.value = data.modifierGroups
     } finally {
       isLoading.value = false
     }
   }
 
   // Menu items CRUD
-  const addItem = (item: Omit<MenuItem, 'id' | 'sortOrder'>) => {
-    const maxId = items.value.reduce((max, i) => Math.max(max, i.id), 0)
-    const categoryItems = items.value.filter(i => i.category === item.category)
-    const maxSort = categoryItems.reduce((max, i) => Math.max(max, i.sortOrder), 0)
-    items.value.push({ ...item, id: maxId + 1, sortOrder: maxSort + 1 })
+  const addItem = async (item: Omit<MenuItem, 'id' | 'sortOrder'>) => {
+    const { modifierGroups: mgIds, ...rest } = item
+    const created = await api.post<MenuItem>('/menu/items', { ...rest, modifierGroupIds: mgIds })
+    items.value.push(created)
+    return created
   }
 
-  const updateItem = (id: number, data: Partial<MenuItem>) => {
+  const updateItem = async (id: string, data: Partial<MenuItem>) => {
+    const { modifierGroups: mgIds, ...rest } = data
+    const payload = mgIds !== undefined ? { ...rest, modifierGroupIds: mgIds } : rest
+    const updated = await api.patch<MenuItem>(`/menu/items/${id}`, payload)
     const index = items.value.findIndex(i => i.id === id)
-    if (index !== -1) {
-      items.value[index] = { ...items.value[index], ...data } as MenuItem
-    }
+    if (index !== -1) items.value[index] = updated
+    return updated
   }
 
-  const deleteItem = (id: number) => {
+  const deleteItem = async (id: string) => {
+    await api.delete(`/menu/items/${id}`)
     items.value = items.value.filter(i => i.id !== id)
   }
 
-  const toggleAvailability = (id: number) => {
-    const item = items.value.find(i => i.id === id)
-    if (item) {
-      item.available = !item.available
-    }
+  const toggleAvailability = async (id: string) => {
+    const updated = await api.patch<MenuItem>(`/menu/items/${id}/toggle`)
+    const index = items.value.findIndex(i => i.id === id)
+    if (index !== -1) items.value[index] = updated
   }
 
-  const bulkToggleAvailability = (ids: number[], available: boolean) => {
+  const bulkToggleAvailability = async (ids: string[], available: boolean) => {
+    await api.post('/menu/items/bulk-toggle', { ids, available })
     ids.forEach(id => {
       const item = items.value.find(i => i.id === id)
       if (item) item.available = available
     })
   }
 
-  const bulkDelete = (ids: number[]) => {
+  const bulkDelete = async (ids: string[]) => {
+    await api.post('/menu/items/bulk-delete', { ids })
     items.value = items.value.filter(i => !ids.includes(i.id))
   }
 
   // Categories CRUD
-  const addCategory = (name: string) => {
-    const maxId = categories.value.reduce((max, c) => Math.max(max, c.id), 0)
-    const maxSort = categories.value.reduce((max, c) => Math.max(max, c.sortOrder), 0)
-    categories.value.push({ id: maxId + 1, name, sortOrder: maxSort + 1 })
+  const addCategory = async (name: string, type?: string | null) => {
+    const created = await api.post<MenuCategory>('/menu/categories', { name, type: type ?? undefined })
+    categories.value.push(created)
+    return created
   }
 
-  const updateCategory = (id: number, name: string) => {
+  const updateCategory = async (id: string, name: string, type?: string | null) => {
+    const updated = await api.patch<MenuCategory>(`/menu/categories/${id}`, { name, type: type !== undefined ? type : undefined })
     const cat = categories.value.find(c => c.id === id)
-    if (cat) cat.name = name
-  }
-
-  const deleteCategory = (id: number) => {
-    categories.value = categories.value.filter(c => c.id !== id)
-    items.value = items.value.filter(i => i.category !== id)
-  }
-
-  const reorderCategories = (reordered: MenuCategory[]) => {
-    categories.value = reordered.map((c, i) => ({ ...c, sortOrder: i + 1 }))
-  }
-
-  // Modifier groups CRUD
-  const addModifierGroup = (group: Omit<ModifierGroup, 'id'>) => {
-    const maxId = modifierGroups.value.reduce((max, g) => Math.max(max, g.id), 0)
-    modifierGroups.value.push({ ...group, id: maxId + 1 })
-  }
-
-  const updateModifierGroup = (id: number, data: Partial<ModifierGroup>) => {
-    const index = modifierGroups.value.findIndex(g => g.id === id)
-    if (index !== -1) {
-      modifierGroups.value[index] = { ...modifierGroups.value[index], ...data } as ModifierGroup
+    if (cat) {
+      cat.name = updated.name
+      cat.type = updated.type
     }
   }
 
-  const deleteModifierGroup = (id: number) => {
+  const deleteCategory = async (id: string) => {
+    await api.delete(`/menu/categories/${id}`)
+    categories.value = categories.value.filter(c => c.id !== id)
+    items.value = items.value.filter(i => i.categoryId !== id)
+  }
+
+  const reorderCategories = async (reordered: MenuCategory[]) => {
+    const ids = reordered.map(c => c.id)
+    const updated = await api.patch<MenuCategory[]>('/menu/categories-reorder', { ids })
+    categories.value = updated
+  }
+
+  // Modifier groups CRUD
+  const addModifierGroup = async (group: Omit<ModifierGroup, 'id'>) => {
+    const created = await api.post<ModifierGroup>('/menu/modifier-groups', group)
+    modifierGroups.value.push(created)
+    return created
+  }
+
+  const updateModifierGroup = async (id: string, data: Partial<ModifierGroup>) => {
+    const updated = await api.patch<ModifierGroup>(`/menu/modifier-groups/${id}`, data)
+    const index = modifierGroups.value.findIndex(g => g.id === id)
+    if (index !== -1) modifierGroups.value[index] = updated
+  }
+
+  const deleteModifierGroup = async (id: string) => {
+    await api.delete(`/menu/modifier-groups/${id}`)
     modifierGroups.value = modifierGroups.value.filter(g => g.id !== id)
     items.value.forEach(item => {
       item.modifierGroups = item.modifierGroups.filter(gId => gId !== id)
     })
+  }
+
+  // Image upload
+  const uploadItemImage = async (id: string, file: File) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    const updated = await api.upload<MenuItem>(`/menu/items/${id}/upload-image`, formData)
+    const index = items.value.findIndex(i => i.id === id)
+    if (index !== -1) items.value[index] = { ...items.value[index], ...updated, modifierGroups: updated.modifierGroups }
+    return updated
+  }
+
+  const deleteItemImage = async (id: string) => {
+    const updated = await api.delete<MenuItem>(`/menu/items/${id}/image`)
+    const index = items.value.findIndex(i => i.id === id)
+    if (index !== -1) items.value[index] = { ...items.value[index], ...updated, modifierGroups: updated.modifierGroups }
+    return updated
   }
 
   return {
@@ -154,5 +184,7 @@ export const useMenuStore = defineStore('menu', () => {
     addModifierGroup,
     updateModifierGroup,
     deleteModifierGroup,
+    uploadItemImage,
+    deleteItemImage,
   }
 })

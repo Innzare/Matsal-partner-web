@@ -10,8 +10,8 @@ const modifiersDialog = ref(false);
 const deleteDialog = ref(false);
 
 const editingItem = ref<MenuItem | null>(null);
-const deleteItemId = ref<number | null>(null);
-const selectedIds = ref<number[]>([]);
+const deleteItemId = ref<string | null>(null);
+const selectedIds = ref<string[]>([]);
 const viewMode = ref<"grid" | "list">("grid");
 
 onMounted(() => {
@@ -29,7 +29,7 @@ function openEditDialog(item: MenuItem) {
   itemDialog.value = true;
 }
 
-function openDeleteDialog(id: number) {
+function openDeleteDialog(id: string) {
   deleteItemId.value = id;
   deleteDialog.value = true;
 }
@@ -41,16 +41,19 @@ function confirmDelete() {
   }
 }
 
-function handleSave(data: Omit<MenuItem, "id" | "sortOrder">) {
+async function handleSave(data: Omit<MenuItem, "id" | "sortOrder">, pendingImage?: File) {
   if (editingItem.value) {
-    menuStore.updateItem(editingItem.value.id, data);
+    await menuStore.updateItem(editingItem.value.id, data);
   } else {
-    menuStore.addItem(data);
+    const created = await menuStore.addItem(data);
+    if (pendingImage && created) {
+      await menuStore.uploadItemImage(created.id, pendingImage);
+    }
   }
 }
 
 // Selection
-function toggleSelect(id: number) {
+function toggleSelect(id: string) {
   const idx = selectedIds.value.indexOf(id);
   if (idx >= 0) {
     selectedIds.value.splice(idx, 1);
@@ -80,7 +83,7 @@ const categoryTabs = computed(() => {
 });
 
 // Helpers
-function getCategoryName(catId: number): string {
+function getCategoryName(catId: string): string {
   return menuStore.categories.find((c) => c.id === catId)?.name ?? "—";
 }
 
@@ -192,7 +195,7 @@ const stoppedItems = computed(
         >
           {{ cat.name }}
           <span v-if="cat.id !== null" class="menu-cat-chip__count">
-            {{ menuStore.items.filter((i) => i.category === cat.id).length }}
+            {{ menuStore.items.filter((i) => i.categoryId === cat.id).length }}
           </span>
         </div>
       </div>
@@ -312,7 +315,7 @@ const stoppedItems = computed(
 
           <template #item.category="{ item }">
             <span class="mt-category">{{
-              getCategoryName(item.category)
+              getCategoryName(item.categoryId)
             }}</span>
           </template>
 
