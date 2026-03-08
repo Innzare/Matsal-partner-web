@@ -41,6 +41,18 @@ const rejectDialog = ref(false)
 const rejectOrderId = ref<string | null>(null)
 const rejectReason = ref('')
 const search = ref('')
+const actionLoading = ref(false)
+
+// Snackbar
+const snackbar = ref(false)
+const snackbarText = ref('')
+const snackbarColor = ref('green')
+
+function showSnack(text: string, color = 'green') {
+  snackbarText.value = text
+  snackbarColor.value = color
+  snackbar.value = true
+}
 
 onMounted(() => {
   ordersStore.loadOrders()
@@ -78,20 +90,67 @@ const statCards = computed(() => [
   },
 ])
 
-// Line chart — orders overview by day of week
-const weekDays = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб']
+// Line chart — revenue dynamics (current week, Mon–Sun)
+const weekDays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
+const weeklyRevenueData = computed(() => {
+  const now = new Date()
+  const day = now.getDay()
+  const diff = day === 0 ? 6 : day - 1
+  const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - diff)
+  weekStart.setHours(0, 0, 0, 0)
+
+  const revenue = new Array(7).fill(0)
+  ordersStore.orders
+    .filter(o => o.status === 'completed')
+    .forEach(o => {
+      const d = new Date(o.createdAt)
+      if (d >= weekStart) {
+        const idx = d.getDay() === 0 ? 6 : d.getDay() - 1
+        revenue[idx] += o.totalPrice
+      }
+    })
+  return revenue
+})
+
+const weeklyRevenueSummary = computed(() => {
+  const total = weeklyRevenueData.value.reduce((a, b) => a + b, 0)
+  const ordersCount = (() => {
+    const now = new Date()
+    const day = now.getDay()
+    const diff = day === 0 ? 6 : day - 1
+    const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - diff)
+    weekStart.setHours(0, 0, 0, 0)
+    return ordersStore.orders.filter(o => new Date(o.createdAt) >= weekStart).length
+  })()
+  const completed = (() => {
+    const now = new Date()
+    const day = now.getDay()
+    const diff = day === 0 ? 6 : day - 1
+    const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - diff)
+    weekStart.setHours(0, 0, 0, 0)
+    return ordersStore.orders.filter(o => o.status === 'completed' && new Date(o.createdAt) >= weekStart).length
+  })()
+  return {
+    revenue: total,
+    orders: ordersCount,
+    avgCheck: completed > 0 ? Math.round(total / completed) : 0,
+  }
+})
+
 const lineChartData = computed(() => ({
   labels: weekDays,
   datasets: [
     {
-      label: 'Заказы',
-      data: [25, 48, 62, 55, 85, 72, 40],
+      label: 'Выручка',
+      data: weeklyRevenueData.value,
       borderColor: '#F97316',
-      backgroundColor: 'rgba(249,115,22,0.1)',
+      backgroundColor: 'rgba(249,115,22,0.06)',
       tension: 0.4,
       fill: true,
       pointBackgroundColor: '#F97316',
-      pointRadius: 4,
+      pointRadius: 3,
+      pointHoverRadius: 6,
+      borderWidth: 2.5,
     },
   ],
 }))
@@ -99,12 +158,30 @@ const lineChartData = computed(() => ({
 const lineChartOptions = {
   responsive: true,
   maintainAspectRatio: false,
+  interaction: { mode: 'index' as const, intersect: false },
   plugins: {
     legend: { display: false },
+    tooltip: {
+      mode: 'index' as const,
+      intersect: false,
+      callbacks: {
+        label: (ctx: any) => `Выручка: ${(ctx.parsed.y ?? 0).toLocaleString('ru-RU')} ₽`,
+      },
+    },
   },
   scales: {
-    x: { grid: { display: false } },
-    y: { grid: { color: 'rgba(0,0,0,0.05)' }, beginAtZero: true },
+    x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+    y: {
+      grid: { color: 'rgba(0,0,0,0.04)' },
+      beginAtZero: true,
+      ticks: {
+        font: { size: 11 },
+        callback: (v: string | number) => {
+          const num = typeof v === 'number' ? v : parseFloat(v)
+          return num >= 1000 ? (num / 1000).toFixed(0) + 'k' : String(v)
+        },
+      },
+    },
   },
 }
 
@@ -191,9 +268,17 @@ const openDetails = (order: PartnerOrder) => {
   detailsDialog.value = true
 }
 
-const acceptOrder = (id: string) => {
-  ordersStore.acceptOrder(id)
-  detailsDialog.value = false
+const acceptOrder = async (id: string) => {
+  actionLoading.value = true
+  try {
+    await ordersStore.acceptOrder(id)
+    showSnack('Заказ принят')
+    detailsDialog.value = false
+  } catch (e: any) {
+    showSnack(e.message || 'Ошибка при принятии заказа', 'red')
+  } finally {
+    actionLoading.value = false
+  }
 }
 
 const openRejectDialog = (id: string) => {
@@ -202,23 +287,49 @@ const openRejectDialog = (id: string) => {
   rejectDialog.value = true
 }
 
-const confirmReject = () => {
-  if (rejectOrderId.value && rejectReason.value.trim()) {
-    ordersStore.rejectOrder(rejectOrderId.value, rejectReason.value)
+const confirmReject = async (reason?: string) => {
+  const id = rejectOrderId.value
+  const text = reason || rejectReason.value
+  if (!id || !text.trim()) return
+
+  actionLoading.value = true
+  try {
+    await ordersStore.rejectOrder(id, text)
+    showSnack('Заказ отклонён')
     rejectDialog.value = false
     detailsDialog.value = false
     rejectOrderId.value = null
+  } catch (e: any) {
+    showSnack(e.message || 'Ошибка при отклонении заказа', 'red')
+  } finally {
+    actionLoading.value = false
   }
 }
 
-const markReady = (id: string) => {
-  ordersStore.markReady(id)
-  detailsDialog.value = false
+const markReady = async (id: string) => {
+  actionLoading.value = true
+  try {
+    await ordersStore.markReady(id)
+    showSnack('Заказ готов к выдаче')
+    detailsDialog.value = false
+  } catch (e: any) {
+    showSnack(e.message || 'Ошибка при смене статуса', 'red')
+  } finally {
+    actionLoading.value = false
+  }
 }
 
-const markPickedUp = (id: string) => {
-  ordersStore.markPickedUp(id)
-  detailsDialog.value = false
+const markPickedUp = async (id: string) => {
+  actionLoading.value = true
+  try {
+    await ordersStore.markPickedUp(id)
+    showSnack('Заказ передан курьеру')
+    detailsDialog.value = false
+  } catch (e: any) {
+    showSnack(e.message || 'Ошибка при смене статуса', 'red')
+  } finally {
+    actionLoading.value = false
+  }
 }
 
 function formatDate(date: string): string {
@@ -274,13 +385,41 @@ const statusFilterCounts = computed(() => ({
         </v-row>
       </v-col>
 
-      <!-- Orders Overview line chart -->
+      <!-- Revenue dynamics line chart -->
       <v-col cols="12" md="5">
         <v-card flat rounded="xl" class="pa-5 h-100">
-          <div class="d-flex align-center justify-space-between mb-3">
-            <p class="text-subtitle-1 font-weight-bold">Обзор заказов</p>
-            <v-chip size="small" variant="outlined" color="grey">На этой неделе</v-chip>
+          <div class="d-flex align-center justify-space-between mb-2">
+            <div>
+              <p class="text-subtitle-1 font-weight-bold">Динамика выручки</p>
+              <p class="text-caption text-medium-emphasis">Текущая неделя</p>
+            </div>
+            <div class="d-flex align-center ga-1">
+              <div class="rounded-circle" style="width: 8px; height: 8px; background: #F97316" />
+              <span class="text-caption text-medium-emphasis">Выручка</span>
+            </div>
           </div>
+
+          <v-row dense class="mb-3">
+            <v-col cols="4">
+              <p class="text-caption text-medium-emphasis">Выручка</p>
+              <p class="text-subtitle-2 font-weight-bold" style="color: #EA004B">
+                {{ weeklyRevenueSummary.revenue.toLocaleString('ru-RU') }} ₽
+              </p>
+            </v-col>
+            <v-col cols="4">
+              <p class="text-caption text-medium-emphasis">Заказов</p>
+              <p class="text-subtitle-2 font-weight-bold" style="color: #F97316">
+                {{ weeklyRevenueSummary.orders }}
+              </p>
+            </v-col>
+            <v-col cols="4">
+              <p class="text-caption text-medium-emphasis">Средний чек</p>
+              <p class="text-subtitle-2 font-weight-bold" style="color: #8b5cf6">
+                {{ weeklyRevenueSummary.avgCheck.toLocaleString('ru-RU') }} ₽
+              </p>
+            </v-col>
+          </v-row>
+
           <div style="height: 140px">
             <Line :data="lineChartData" :options="lineChartOptions" />
           </div>
@@ -413,6 +552,7 @@ const statusFilterCounts = computed(() => ({
     <OrderDetailsDialog
       v-model="detailsDialog"
       :order="ordersStore.selectedOrder"
+      :loading="actionLoading"
       @accept="acceptOrder"
       @reject="openRejectDialog"
       @ready="markReady"
@@ -428,8 +568,12 @@ const statusFilterCounts = computed(() => ({
       confirm-color="red"
       show-input
       input-label="Причина отклонения"
-      @confirm="(reason?: string) => { rejectReason = reason || ''; confirmReject() }"
+      @confirm="confirmReject"
     />
+
+    <v-snackbar v-model="snackbar" :timeout="3000" :color="snackbarColor" rounded="lg">
+      {{ snackbarText }}
+    </v-snackbar>
   </div>
 </template>
 

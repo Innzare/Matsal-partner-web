@@ -3,12 +3,28 @@ import { useRouter, useRoute } from "vue-router";
 import { useTheme } from "vuetify";
 import logo from "@/assets/images/logo.svg";
 import { useAuthStore } from "@/stores/auth";
+import { useOrdersStore } from "@/stores/orders";
+import { useNotificationsStore } from "@/stores/notifications";
+import { connectSocket, disconnectSocket, onSocketEvent, offSocketEvent } from "@/composables/useSocket";
+import type { UserRole } from "@/types";
 
 const authStore = useAuthStore();
+const ordersStore = useOrdersStore();
+const notificationsStore = useNotificationsStore();
 const theme = useTheme();
 
 const router = useRouter();
 const route = useRoute();
+
+// Dynamic primary color: green for grocery, pink for restaurant
+const ACCENT_RESTAURANT = '#EA004B';
+const ACCENT_GROCERY = '#16a34a';
+
+watch(() => authStore.isGrocery, (isGrocery) => {
+  const color = isGrocery ? ACCENT_GROCERY : ACCENT_RESTAURANT;
+  theme.themes.value.light.colors.primary = color;
+  theme.themes.value.dark.colors.primary = color;
+}, { immediate: true });
 
 const logoutDialog = ref(false);
 const DRAWER_BREAKPOINT = 1280;
@@ -17,6 +33,47 @@ const drawer = ref(!isMobile.value);
 const collapsed = ref(false);
 
 const sidebarWidth = computed(() => (collapsed.value ? 72 : 260));
+
+// ── WebSocket handlers ──
+const handleNewOrder = (data: any) => {
+  ordersStore.addOrder(data);
+  const itemsCount = data.items?.length || 0;
+  notificationsStore.addNotification({
+    id: `ws-${Date.now()}`,
+    type: 'NEW_ORDER',
+    title: `Новый заказ #${data.orderNumber}`,
+    message: `${itemsCount} позиций · ${data.total} ₽`,
+    createdAt: new Date().toISOString(),
+    isRead: false,
+    meta: { orderId: data.id, orderNumber: data.orderNumber },
+  });
+};
+
+const handleStatusUpdate = (data: any) => {
+  ordersStore.updateOrderFromSocket(data);
+  notificationsStore.addNotification({
+    id: `ws-${Date.now()}-status`,
+    type: 'ORDER_STATUS',
+    title: `Заказ #${data.orderNumber}`,
+    message: `Статус изменён: ${data.status}`,
+    createdAt: new Date().toISOString(),
+    isRead: false,
+    meta: { orderId: data.id, orderNumber: data.orderNumber },
+  });
+};
+
+const handleCancelled = (data: any) => {
+  ordersStore.cancelOrderFromSocket(data);
+  notificationsStore.addNotification({
+    id: `ws-${Date.now()}-cancel`,
+    type: 'ORDER_CANCELLED',
+    title: `Заказ #${data.orderNumber} отменён`,
+    message: data.cancelReason || 'Клиент отменил заказ',
+    createdAt: new Date().toISOString(),
+    isRead: false,
+    meta: { orderId: data.id, orderNumber: data.orderNumber },
+  });
+};
 
 onMounted(() => {
   const onResize = () => {
@@ -31,7 +88,25 @@ onMounted(() => {
     }
   };
   window.addEventListener("resize", onResize);
-  onUnmounted(() => window.removeEventListener("resize", onResize));
+
+  // Загрузить уведомления из API
+  notificationsStore.load();
+
+  // WebSocket connection
+  if (authStore.accessToken) {
+    connectSocket(authStore.accessToken);
+    onSocketEvent('order:new', handleNewOrder);
+    onSocketEvent('order:statusUpdate', handleStatusUpdate);
+    onSocketEvent('order:cancelled', handleCancelled);
+  }
+
+  onUnmounted(() => {
+    window.removeEventListener("resize", onResize);
+    offSocketEvent('order:new', handleNewOrder);
+    offSocketEvent('order:statusUpdate', handleStatusUpdate);
+    offSocketEvent('order:cancelled', handleCancelled);
+    disconnectSocket();
+  });
 });
 
 // Dark mode
@@ -54,29 +129,56 @@ const toggleTheme = () => {
   applyDarkClass(isDark.value);
 };
 
-const mainNavRoutes = [
+// Карта доступа: какие роли видят какие разделы
+const ROUTE_ACCESS: Record<string, UserRole[]> = {
+  "/": ["OWNER", "MANAGER", "OPERATOR"],
+  "/dashboard": ["OWNER"],
+  "/orders": ["OWNER", "MANAGER", "OPERATOR"],
+  "/menu": ["OWNER", "MANAGER"],
+  "/catalog": ["OWNER", "MANAGER"],
+  "/promotion": ["OWNER"],
+  "/push-campaigns": ["OWNER"],
+  "/search-boost": ["OWNER"],
+  "/badges": ["OWNER"],
+  "/reviews": ["OWNER", "MANAGER"],
+  "/notifications": ["OWNER", "MANAGER", "OPERATOR"],
+  "/settings": ["OWNER"],
+  "/staff": ["OWNER"],
+};
+
+const canAccess = (path: string) => {
+  const role = authStore.userRole as UserRole | undefined;
+  if (!role) return true;
+  const allowed = ROUTE_ACCESS[path];
+  return !allowed || allowed.includes(role);
+};
+
+const allMainNavRoutes = computed(() => [
   { path: "/", title: "Главная", icon: "mdi-home-outline" },
   { path: "/dashboard", title: "Дашборд", icon: "mdi-view-dashboard-outline" },
   { path: "/orders", title: "Заказы", icon: "mdi-receipt-text-outline" },
-  { path: "/menu", title: "Меню", icon: "mdi-food-outline" },
-];
+  authStore.isGrocery
+    ? { path: "/catalog", title: "Каталог", icon: "mdi-package-variant-closed" }
+    : { path: "/menu", title: "Меню", icon: "mdi-food-outline" },
+]);
 
-const marketingNavRoutes = [
+const allMarketingNavRoutes = [
   { path: "/promotion", title: "Продвижение", icon: "mdi-rocket-launch-outline" },
   { path: "/push-campaigns", title: "Push-рассылки", icon: "mdi-bell-badge-outline" },
   { path: "/search-boost", title: "Буст в поиске", icon: "mdi-trending-up" },
   { path: "/badges", title: "Бейджи", icon: "mdi-shield-star-outline" },
 ];
 
-const secondaryNavRoutes = [
+const allSecondaryNavRoutes = [
   { path: "/reviews", title: "Отзывы", icon: "mdi-star-outline" },
-  {
-    path: "/notifications",
-    title: "Уведомления",
-    icon: "mdi-bell-outline",
-  },
+  { path: "/staff", title: "Работники", icon: "mdi-account-group-outline" },
+  { path: "/notifications", title: "Уведомления", icon: "mdi-bell-outline" },
   { path: "/settings", title: "Настройки", icon: "mdi-cog-outline" },
 ];
+
+const mainNavRoutes = computed(() => allMainNavRoutes.value.filter(r => canAccess(r.path)));
+const marketingNavRoutes = computed(() => allMarketingNavRoutes.filter(r => canAccess(r.path)));
+const secondaryNavRoutes = computed(() => allSecondaryNavRoutes.filter(r => canAccess(r.path)));
 
 // Маппинг названий для роутов (для header)
 const routeTitles: Record<string, string> = {
@@ -84,6 +186,7 @@ const routeTitles: Record<string, string> = {
   "/dashboard": "Дашборд",
   "/notifications": "Уведомления",
   "/menu": "Меню",
+  "/catalog": "Каталог",
   "/orders": "Заказы",
   "/reviews": "Отзывы",
   "/promotion": "Продвижение",
@@ -91,20 +194,23 @@ const routeTitles: Record<string, string> = {
   "/search-boost": "Буст в поиске",
   "/badges": "Бейдж «Рекомендуемое»",
   "/settings": "Настройки",
+  "/staff": "Работники",
 };
 
-const routeSubtitles: Record<string, string> = {
-  "/dashboard": "Обзор показателей ресторана",
+const routeSubtitles = computed<Record<string, string>>(() => ({
+  "/dashboard": authStore.isGrocery ? "Обзор показателей магазина" : "Обзор показателей ресторана",
   "/orders": "Управление заказами",
   "/menu": "Управление позициями и категориями",
+  "/catalog": "Управление товарами и категориями",
   "/reviews": "Отзывы клиентов",
   "/notifications": "Центр уведомлений",
   "/promotion": "Реклама и размещение в приложении",
   "/push-campaigns": "Отправка push-уведомлений клиентам",
   "/search-boost": "Платное повышение позиции в поиске",
   "/badges": "Бейдж рекомендуемого заведения",
-  "/settings": "Настройки ресторана",
-};
+  "/settings": authStore.isGrocery ? "Настройки магазина" : "Настройки ресторана",
+  "/staff": authStore.isGrocery ? "Управление командой магазина" : "Управление командой ресторана",
+}));
 
 // User initials for avatar
 const userInitials = computed(() => {
@@ -132,12 +238,13 @@ const goToNotifications = () => {
 
 const confirmLogout = async () => {
   logoutDialog.value = false;
+  disconnectSocket();
   await authStore.logout();
 };
 </script>
 
 <template>
-  <v-responsive class="overflow-visible" :class="{ dark: isDark }">
+  <v-responsive class="overflow-visible" :class="{ dark: isDark, grocery: authStore.isGrocery }">
     <v-app>
       <!-- Sidebar -->
       <v-navigation-drawer
@@ -304,9 +411,7 @@ const confirmLogout = async () => {
                 authStore.userName || "Пользователь"
               }}</span>
               <span class="lyt-sidebar-user-role">{{
-                authStore.userRole === "admin"
-                  ? "Администратор"
-                  : authStore.userRole || ""
+                { OWNER: 'Владелец', MANAGER: 'Менеджер', OPERATOR: 'Оператор' }[authStore.userRole as string] || authStore.userRole || ""
               }}</span>
             </div>
             <v-tooltip text="Выйти" location="end" :disabled="!collapsed">
@@ -364,7 +469,7 @@ const confirmLogout = async () => {
 
               <button class="lyt-header-icon-btn" @click="goToNotifications">
                 <v-icon icon="mdi-bell-outline" size="20" />
-                <span class="lyt-header-badge">3</span>
+                <span v-if="notificationsStore.unreadCount > 0" class="lyt-header-badge">{{ notificationsStore.unreadCount }}</span>
               </button>
 
               <button
@@ -583,6 +688,10 @@ const confirmLogout = async () => {
   letter-spacing: 0.5px;
 }
 
+.grocery .lyt-sidebar-brand-label {
+  color: #16a34a;
+}
+
 /* Nav sections */
 .lyt-nav-section {
   margin-bottom: 24px;
@@ -637,6 +746,16 @@ const confirmLogout = async () => {
 .lyt-nav-item--active:hover {
   background: color-mix(in srgb, #ea004b 12%, transparent);
   color: #ea004b;
+}
+
+.grocery .lyt-nav-item--active {
+  background: color-mix(in srgb, #16a34a 8%, transparent);
+  color: #16a34a;
+}
+
+.grocery .lyt-nav-item--active:hover {
+  background: color-mix(in srgb, #16a34a 12%, transparent);
+  color: #16a34a;
 }
 
 .lyt-nav-text {
@@ -727,6 +846,10 @@ const confirmLogout = async () => {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+}
+
+.grocery .lyt-sidebar-user-avatar {
+  background: linear-gradient(135deg, #16a34a, #22c55e);
 }
 
 .lyt-sidebar-user-info {
@@ -858,6 +981,11 @@ const confirmLogout = async () => {
   box-shadow: 0 0 0 3px color-mix(in srgb, #ea004b 8%, transparent);
 }
 
+.grocery .lyt-header-search-input:focus {
+  border-color: #16a34a;
+  box-shadow: 0 0 0 3px color-mix(in srgb, #16a34a 8%, transparent);
+}
+
 /* Icon buttons */
 .lyt-header-icon-btn {
   position: relative;
@@ -897,6 +1025,10 @@ const confirmLogout = async () => {
   line-height: 1;
 }
 
+.grocery .lyt-header-badge {
+  background: #16a34a;
+}
+
 .lyt-header-divider {
   width: 1px;
   height: 24px;
@@ -934,6 +1066,10 @@ const confirmLogout = async () => {
   justify-content: center;
 }
 
+.grocery .lyt-header-user-avatar {
+  background: linear-gradient(135deg, #16a34a, #22c55e);
+}
+
 .lyt-header-user-chevron {
   color: #9ca3af;
 }
@@ -968,6 +1104,10 @@ const confirmLogout = async () => {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+}
+
+.grocery .lyt-dropdown-avatar {
+  background: linear-gradient(135deg, #16a34a, #22c55e);
 }
 
 .lyt-dropdown-name {
@@ -1125,6 +1265,16 @@ const confirmLogout = async () => {
   color: #ff4081;
 }
 
+.dark.grocery .lyt-nav-item--active {
+  background: color-mix(in srgb, #16a34a 15%, transparent);
+  color: #22c55e;
+}
+
+.dark.grocery .lyt-nav-item--active:hover {
+  background: color-mix(in srgb, #16a34a 20%, transparent);
+  color: #22c55e;
+}
+
 .dark .lyt-theme-btn,
 .dark .lyt-collapse-btn {
   color: #71717a;
@@ -1190,6 +1340,11 @@ const confirmLogout = async () => {
   border-color: #ea004b;
   background: #1e1e2e;
   box-shadow: 0 0 0 3px color-mix(in srgb, #ea004b 15%, transparent);
+}
+
+.dark.grocery .lyt-header-search-input:focus {
+  border-color: #16a34a;
+  box-shadow: 0 0 0 3px color-mix(in srgb, #16a34a 15%, transparent);
 }
 
 .dark .lyt-header-icon-btn {

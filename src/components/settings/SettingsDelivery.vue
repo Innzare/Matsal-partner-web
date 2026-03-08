@@ -1,8 +1,8 @@
 <script lang="ts" setup>
 import { ref, watch } from 'vue'
-import { useRestaurantStore } from '@/stores/restaurant'
+import { useEstablishment } from '@/composables/useEstablishment'
 
-const restaurantStore = useRestaurantStore()
+const est = useEstablishment()
 const emit = defineEmits<{ save: [text: string] }>()
 
 const form = ref({
@@ -16,14 +16,14 @@ const form = ref({
   dineInEnabled: true,
 })
 
-watch(() => restaurantStore.restaurant, (r) => {
+watch(() => est.data.value, (r) => {
   if (!r) return
   form.value.deliveryTime = r.deliveryTime ?? ''
   form.value.minOrderAmount = r.minOrderAmount
 }, { immediate: true })
 
 async function saveDelivery() {
-  await restaurantStore.updateRestaurant({
+  await est.update({
     deliveryTime: form.value.deliveryTime,
     minOrderAmount: form.value.minOrderAmount,
   })
@@ -123,7 +123,7 @@ async function saveDelivery() {
       <div class="d-flex justify-end mt-5">
         <v-btn
           color="primary" variant="flat" rounded="lg"
-          :loading="restaurantStore.isSaving" @click="saveDelivery"
+          :loading="est.isSaving.value" @click="saveDelivery"
         >
           Сохранить
         </v-btn>

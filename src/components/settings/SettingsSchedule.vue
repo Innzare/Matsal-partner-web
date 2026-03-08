@@ -1,10 +1,10 @@
 <script lang="ts" setup>
 import { ref, watch } from 'vue'
-import { useRestaurantStore } from '@/stores/restaurant'
+import { useEstablishment } from '@/composables/useEstablishment'
 import type { WeekDay } from '@/types'
 import { WEEKDAY_LABELS } from '@/types'
 
-const restaurantStore = useRestaurantStore()
+const est = useEstablishment()
 const emit = defineEmits<{ save: [text: string] }>()
 
 const weekDays = Object.keys(WEEKDAY_LABELS) as WeekDay[]
@@ -15,7 +15,7 @@ const workingHours = ref(
   ) as Record<WeekDay, { open: string; close: string; isOpen: boolean }>
 )
 
-watch(() => restaurantStore.restaurant, (r) => {
+watch(() => est.data.value, (r) => {
   if (!r) return
   workingHours.value = r.workingHours
     ? JSON.parse(JSON.stringify(r.workingHours))
@@ -32,8 +32,13 @@ function copyAllSchedule(sourceDay: WeekDay) {
   emit('save', 'Расписание скопировано на все дни')
 }
 
+async function toggleAutoSchedule(value: boolean) {
+  await est.update({ autoSchedule: value })
+  emit('save', value ? 'Авто-расписание включено' : 'Авто-расписание выключено')
+}
+
 async function saveSchedule() {
-  await restaurantStore.updateRestaurant({ workingHours: workingHours.value })
+  await est.update({ workingHours: workingHours.value })
   emit('save', 'Расписание сохранено')
 }
 </script>
@@ -42,6 +47,21 @@ async function saveSchedule() {
   <div class="settings-section">
     <div class="section-title">Расписание работы</div>
     <div class="section-desc">Настройте время работы для каждого дня недели</div>
+
+    <!-- Auto schedule toggle -->
+    <v-card flat rounded="xl" class="pa-4 mb-4">
+      <div class="d-flex align-center justify-space-between">
+        <div>
+          <div class="text-body-1 font-weight-medium">Авто-расписание</div>
+          <div class="text-body-2 text-grey">Автоматически открывать и закрывать заведение по расписанию</div>
+        </div>
+        <v-switch
+          :model-value="est.data.value?.autoSchedule ?? false"
+          @update:model-value="toggleAutoSchedule"
+          color="green" hide-details density="compact"
+        />
+      </div>
+    </v-card>
 
     <v-card flat rounded="xl" class="pa-6 mb-5">
       <!-- Quick actions -->
@@ -93,7 +113,7 @@ async function saveSchedule() {
       <div class="d-flex justify-end mt-5">
         <v-btn
           color="primary" variant="flat" rounded="lg"
-          :loading="restaurantStore.isSaving" @click="saveSchedule"
+          :loading="est.isSaving.value" @click="saveSchedule"
         >
           Сохранить расписание
         </v-btn>

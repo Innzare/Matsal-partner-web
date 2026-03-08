@@ -1,8 +1,8 @@
 <script lang="ts" setup>
 import { ref, watch } from 'vue'
-import { useRestaurantStore } from '@/stores/restaurant'
+import { useEstablishment } from '@/composables/useEstablishment'
 
-const restaurantStore = useRestaurantStore()
+const est = useEstablishment()
 const emit = defineEmits<{ save: [text: string] }>()
 
 const cuisineOptions = [
@@ -26,14 +26,14 @@ const coverDeleting = ref(false)
 const logoInputRef = ref<HTMLInputElement>()
 const coverInputRef = ref<HTMLInputElement>()
 
-watch(() => restaurantStore.restaurant, (r) => {
+watch(() => est.data.value, (r) => {
   if (!r) return
   form.value = {
     name: r.name,
     description: r.description ?? '',
     address: r.address,
     phone: r.phone ?? '',
-    cuisineTypes: [...r.cuisineTypes],
+    cuisineTypes: 'cuisineTypes' in r ? [...(r as any).cuisineTypes] : [],
   }
 }, { immediate: true })
 
@@ -41,7 +41,7 @@ async function handleUpload(file: File, type: 'logo' | 'cover') {
   const loading = type === 'logo' ? logoUploading : coverUploading
   loading.value = true
   try {
-    await restaurantStore.uploadImage(file, type)
+    await est.uploadImage(file, type)
     emit('save', type === 'logo' ? 'Логотип обновлён' : 'Обложка обновлена')
   } catch (e: any) {
     emit('save', e.message || 'Ошибка загрузки')
@@ -68,7 +68,7 @@ async function handleDelete(type: 'logo' | 'cover') {
   const loading = type === 'logo' ? logoDeleting : coverDeleting
   loading.value = true
   try {
-    await restaurantStore.deleteImage(type)
+    await est.deleteImage(type)
     emit('save', type === 'logo' ? 'Логотип удалён' : 'Обложка удалена')
   } catch (e: any) {
     emit('save', e.message || 'Ошибка удаления')
@@ -78,13 +78,16 @@ async function handleDelete(type: 'logo' | 'cover') {
 }
 
 async function saveProfile() {
-  await restaurantStore.updateRestaurant({
+  const payload: Record<string, any> = {
     name: form.value.name,
     description: form.value.description,
     address: form.value.address,
     phone: form.value.phone,
-    cuisineTypes: form.value.cuisineTypes,
-  })
+  }
+  if (!est.isGrocery.value) {
+    payload.cuisineTypes = form.value.cuisineTypes
+  }
+  await est.update(payload)
   emit('save', 'Профиль сохранён')
 }
 </script>
@@ -92,15 +95,15 @@ async function saveProfile() {
 <template>
   <div class="settings-section">
     <div class="section-title">Информация о заведении</div>
-    <div class="section-desc">Основные данные вашего ресторана, видимые клиентам</div>
+    <div class="section-desc">Основные данные вашего {{ est.label.value }}, видимые клиентам</div>
 
     <!-- Logo & Cover upload -->
     <v-card flat rounded="xl" class="mb-5 overflow-hidden">
       <!-- Cover image -->
       <div class="cover-area" @click="coverInputRef?.click()">
         <v-img
-          v-if="restaurantStore.restaurant?.imageUrl"
-          :src="restaurantStore.restaurant.imageUrl"
+          v-if="est.data.value?.imageUrl"
+          :src="est.data.value.imageUrl"
           height="180" cover
         />
         <div v-else class="cover-placeholder" />
@@ -115,7 +118,7 @@ async function saveProfile() {
 
         <!-- Delete cover button -->
         <v-btn
-          v-if="restaurantStore.restaurant?.imageUrl && !coverUploading && !coverDeleting"
+          v-if="est.data.value?.imageUrl && !coverUploading && !coverDeleting"
           class="cover-delete-btn"
           icon="mdi-close" size="x-small" color="error" variant="flat"
           @click.stop="handleDelete('cover')"
@@ -132,7 +135,7 @@ async function saveProfile() {
       <div class="logo-wrapper">
         <div class="logo-area" @click="logoInputRef?.click()">
           <v-avatar size="88" color="grey-lighten-3">
-            <v-img v-if="restaurantStore.restaurant?.logo" :src="restaurantStore.restaurant.logo" />
+            <v-img v-if="est.data.value?.logo" :src="est.data.value.logo" />
             <v-icon v-else icon="mdi-store" size="36" color="grey" />
           </v-avatar>
 
@@ -143,7 +146,7 @@ async function saveProfile() {
 
           <!-- Delete logo button -->
           <v-btn
-            v-if="restaurantStore.restaurant?.logo && !logoUploading && !logoDeleting"
+            v-if="est.data.value?.logo && !logoUploading && !logoDeleting"
             class="logo-delete-btn"
             icon="mdi-close" size="x-small" color="error" variant="flat"
             @click.stop="handleDelete('logo')"
@@ -184,6 +187,7 @@ async function saveProfile() {
         />
       </div>
       <v-combobox
+        v-if="!est.isGrocery.value"
         v-model="form.cuisineTypes" :items="cuisineOptions"
         label="Тип кухни" variant="outlined" density="comfortable"
         multiple chips closable-chips hide-details
@@ -194,18 +198,18 @@ async function saveProfile() {
       <div class="d-flex ga-6 align-center">
         <div class="settings-stat">
           <v-icon icon="mdi-star" color="amber" size="18" class="mr-1" />
-          <span class="settings-stat__value">{{ restaurantStore.restaurant?.rating }}</span>
+          <span class="settings-stat__value">{{ est.data.value?.rating }}</span>
           <span class="settings-stat__label">рейтинг</span>
         </div>
         <div class="settings-stat">
           <v-icon icon="mdi-comment-text-outline" color="primary" size="18" class="mr-1" />
-          <span class="settings-stat__value">{{ restaurantStore.restaurant?.reviewsCount }}</span>
+          <span class="settings-stat__value">{{ est.data.value?.reviewsCount }}</span>
           <span class="settings-stat__label">отзывов</span>
         </div>
         <v-spacer />
         <v-btn
           color="primary" variant="flat" rounded="lg"
-          :loading="restaurantStore.isSaving" @click="saveProfile"
+          :loading="est.isSaving.value" @click="saveProfile"
         >
           Сохранить профиль
         </v-btn>

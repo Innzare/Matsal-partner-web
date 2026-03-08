@@ -1,24 +1,19 @@
 <script lang="ts" setup>
 import { useReviewsStore } from '@/stores/reviews'
-import { useRestaurantStore } from '@/stores/restaurant'
-import { ORDER_TYPE_LABELS, ORDER_TYPE_COLORS } from '@/types'
-import type { OrderType, Review } from '@/types'
+import { useEstablishment } from '@/composables/useEstablishment'
+import { useAuthStore } from '@/stores/auth'
+import type { Review } from '@/types'
 
 const reviewsStore = useReviewsStore()
-const restaurantStore = useRestaurantStore()
+const est = useEstablishment()
+const isGrocery = computed(() => useAuthStore().isGrocery)
 
 onMounted(async () => {
   await Promise.all([
     reviewsStore.loadReviews(),
-    restaurantStore.loadRestaurant(),
+    est.load(),
   ])
 })
-
-const ORDER_TYPE_ICONS: Record<OrderType, string> = {
-  delivery: 'mdi-moped',
-  pickup: 'mdi-walk',
-  dine_in: 'mdi-silverware-fork-knife',
-}
 
 // Filters
 type RatingFilter = 'all' | '5' | '4' | '3' | '2' | '1'
@@ -54,9 +49,8 @@ const filteredReviews = computed(() => {
   if (search.value.trim()) {
     const q = search.value.toLowerCase()
     result = result.filter(r =>
-      r.author.toLowerCase().includes(q) ||
-      r.text.toLowerCase().includes(q) ||
-      r.orderNumber.toString().includes(q),
+      r.customerName.toLowerCase().includes(q) ||
+      r.text.toLowerCase().includes(q),
     )
   }
 
@@ -110,7 +104,13 @@ function timeAgo(date: string): string {
 }
 
 function getInitials(name: string): string {
-  return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+  return name
+    .split(' ')
+    .map(n => n[0])
+    .filter(Boolean)
+    .join('')
+    .toUpperCase()
+    .slice(0, 2) || '?'
 }
 
 function getRatingColor(rating: number): string {
@@ -206,11 +206,11 @@ const maxRatingCount = computed(() =>
                 </div>
               </div>
               <div class="rv-quick-stat">
-                <div class="rv-quick-stat__icon" style="background: #fce4ec">
-                  <v-icon icon="mdi-star-outline" size="20" color="#EA004B" />
+                <div class="rv-quick-stat__icon" :style="{ background: isGrocery ? '#e8f5e9' : '#fce4ec' }">
+                  <v-icon icon="mdi-star-outline" size="20" :color="isGrocery ? '#16a34a' : '#EA004B'" />
                 </div>
                 <div>
-                  <p class="rv-quick-stat__value">{{ restaurantStore.restaurant?.rating ?? '—' }}</p>
+                  <p class="rv-quick-stat__value">{{ est.data.value?.rating ?? '—' }}</p>
                   <p class="rv-quick-stat__label">Рейтинг</p>
                 </div>
               </div>
@@ -276,18 +276,11 @@ const maxRatingCount = computed(() =>
             <!-- Review header -->
             <div class="rv-review__header">
               <div class="rv-review__author">
-                <div class="rv-review__avatar">{{ getInitials(review.author) }}</div>
+                <div class="rv-review__avatar">{{ getInitials(review.customerName) }}</div>
                 <div>
-                  <p class="rv-review__name">{{ review.author }}</p>
+                  <p class="rv-review__name">{{ review.customerName }}</p>
                   <div class="rv-review__meta">
-                    <span class="rv-review__date">{{ timeAgo(review.date) }}</span>
-                    <span class="rv-review__dot">·</span>
-                    <span class="rv-review__order">#{{ review.orderNumber }}</span>
-                    <span class="rv-review__dot">·</span>
-                    <div class="rv-review__type" :style="{ '--type-color': ORDER_TYPE_COLORS[review.orderType] }">
-                      <v-icon :icon="ORDER_TYPE_ICONS[review.orderType]" size="11" />
-                      {{ ORDER_TYPE_LABELS[review.orderType] }}
-                    </div>
+                    <span class="rv-review__date">{{ timeAgo(review.createdAt) }}</span>
                   </div>
                 </div>
               </div>
@@ -297,21 +290,12 @@ const maxRatingCount = computed(() =>
                   <v-icon icon="mdi-star" size="13" color="white" />
                   {{ review.rating }}.0
                 </div>
-                <span class="rv-review__date-full">{{ formatDate(review.date) }}</span>
+                <span class="rv-review__date-full">{{ formatDate(review.createdAt) }}</span>
               </div>
             </div>
 
             <!-- Review text -->
             <p class="rv-review__text">"{{ review.text }}"</p>
-
-            <!-- Ordered items -->
-            <div class="rv-review__items">
-              <span
-                v-for="item in review.items"
-                :key="item"
-                class="rv-review__item-tag"
-              >{{ item }}</span>
-            </div>
 
             <!-- Reply (if exists) -->
             <div v-if="review.reply" class="rv-reply">
@@ -350,8 +334,8 @@ const maxRatingCount = computed(() =>
           <!-- Original review preview -->
           <div v-if="replyTarget" class="rv-dialog__preview">
             <div class="d-flex align-center ga-2 mb-2">
-              <div class="rv-dialog__avatar">{{ getInitials(replyTarget.author) }}</div>
-              <span class="rv-dialog__author">{{ replyTarget.author }}</span>
+              <div class="rv-dialog__avatar">{{ getInitials(replyTarget.customerName) }}</div>
+              <span class="rv-dialog__author">{{ replyTarget.customerName }}</span>
               <div class="rv-review__rating rv-review__rating--sm" :style="{ background: getRatingColor(replyTarget.rating) }">
                 <v-icon icon="mdi-star" size="11" color="white" />
                 {{ replyTarget.rating }}.0
@@ -567,6 +551,10 @@ const maxRatingCount = computed(() =>
 .rv-filter--active {
   background: #EA004B;
   color: white;
+}
+
+.grocery .rv-filter--active {
+  background: #16a34a;
 }
 
 .rv-filter-divider {
@@ -1015,6 +1003,43 @@ const maxRatingCount = computed(() =>
 
 .dark .rv-dialog__btn--cancel:hover {
   background: #2e2e42;
+}
+
+/* ── Grocery overrides ── */
+.grocery .rv-review__avatar {
+  background: linear-gradient(135deg, #16a34a, #22c55e);
+}
+
+.grocery .rv-reply {
+  border-left-color: #16a34a;
+}
+
+.grocery .rv-reply__label {
+  color: #16a34a;
+}
+
+.grocery .rv-reply__date {
+  color: #16a34a;
+}
+
+.grocery .rv-reply-btn:hover {
+  background: color-mix(in srgb, #16a34a 5%, transparent);
+  border-color: color-mix(in srgb, #16a34a 20%, transparent);
+  color: #16a34a;
+}
+
+.grocery .rv-dialog__avatar {
+  background: linear-gradient(135deg, #16a34a, #22c55e);
+}
+
+.grocery .rv-dialog__btn--submit {
+  background: #16a34a;
+}
+
+.dark.grocery .rv-reply-btn:hover {
+  background: color-mix(in srgb, #16a34a 10%, #1e1e2e);
+  border-color: color-mix(in srgb, #16a34a 25%, #2e2e42);
+  color: #16a34a;
 }
 
 /* ── Responsive ── */

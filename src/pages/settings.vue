@@ -1,13 +1,13 @@
 <script lang="ts" setup>
 import { ref, onMounted } from 'vue'
-import { useRestaurantStore } from '@/stores/restaurant'
+import { useEstablishment } from '@/composables/useEstablishment'
 import SettingsProfile from '@/components/settings/SettingsProfile.vue'
 import SettingsDelivery from '@/components/settings/SettingsDelivery.vue'
 import SettingsSchedule from '@/components/settings/SettingsSchedule.vue'
 import SettingsNotifications from '@/components/settings/SettingsNotifications.vue'
 import SettingsSecurity from '@/components/settings/SettingsSecurity.vue'
 
-const restaurantStore = useRestaurantStore()
+const est = useEstablishment()
 
 const activeTab = ref(0)
 const snackbar = ref(false)
@@ -19,11 +19,11 @@ const tabs = [
   { icon: 'mdi-truck-delivery', label: 'Доставка' },
   { icon: 'mdi-clock-outline', label: 'Расписание' },
   { icon: 'mdi-bell-outline', label: 'Уведомления' },
-  { icon: 'mdi-shield-lock-outline', label: 'Безопасность' },
+  { icon: 'mdi-account-circle-outline', label: 'Учетная запись' },
 ]
 
 onMounted(() => {
-  restaurantStore.loadRestaurant()
+  est.load()
 })
 
 function showSnack(text: string, color = 'green') {
@@ -33,18 +33,18 @@ function showSnack(text: string, color = 'green') {
 }
 
 async function toggleOpen() {
-  await restaurantStore.toggleOpen()
-  showSnack(restaurantStore.restaurant?.isOpen ? 'Заведение открыто' : 'Заведение закрыто')
+  await est.toggleOpen()
+  showSnack(est.data.value?.isOpen ? 'Заведение открыто' : 'Заведение закрыто')
 }
 </script>
 
 <template>
   <div class="settings-page">
-    <div v-if="restaurantStore.isLoading" class="d-flex justify-center py-16">
+    <div v-if="est.isLoading.value" class="d-flex justify-center py-16">
       <v-progress-circular indeterminate color="primary" />
     </div>
 
-    <template v-else-if="restaurantStore.restaurant">
+    <template v-else-if="est.data.value">
       <!-- Header -->
       <div class="settings-header">
         <div>
@@ -54,13 +54,13 @@ async function toggleOpen() {
 
         <div class="d-flex align-center ga-3">
           <v-chip
-            :color="restaurantStore.restaurant.isOpen ? 'green' : 'red'"
+            :color="est.data.value.isOpen ? 'green' : 'red'"
             variant="flat" size="small"
           >
-            {{ restaurantStore.restaurant.isOpen ? 'Открыто' : 'Закрыто' }}
+            {{ est.data.value.isOpen ? 'Открыто' : 'Закрыто' }}
           </v-chip>
           <v-switch
-            :model-value="restaurantStore.restaurant.isOpen"
+            :model-value="est.data.value.isOpen"
             color="green" hide-details density="compact"
             @update:model-value="toggleOpen"
           />
@@ -127,6 +127,9 @@ async function toggleOpen() {
 .settings-tab--active { background: #ea004b12; color: #ea004b; font-weight: 600; }
 .settings-tab--active .v-icon { color: #ea004b; }
 
+.grocery .settings-tab--active { background: #16a34a12; color: #16a34a; }
+.grocery .settings-tab--active .v-icon { color: #16a34a; }
+
 /* ── Content ── */
 .settings-content { flex: 1; min-width: 0; }
 
@@ -162,5 +165,9 @@ async function toggleOpen() {
 .dark .settings-tab:hover { background: #252538; color: #e4e4e7; }
 .dark .settings-tab--active {
   background: color-mix(in srgb, #ea004b 15%, transparent); color: #ff4081;
+}
+
+.dark.grocery .settings-tab--active {
+  background: color-mix(in srgb, #16a34a 15%, transparent); color: #22c55e;
 }
 </style>

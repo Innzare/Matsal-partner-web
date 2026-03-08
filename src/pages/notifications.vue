@@ -13,12 +13,12 @@ type Filter = 'all' | NotificationType
 const activeFilter = ref<Filter>('all')
 
 const filterTabs: { value: Filter; label: string }[] = [
-  { value: 'all',            label: 'Все' },
-  { value: 'new_order',      label: 'Заказы' },
-  { value: 'new_review',     label: 'Отзывы' },
-  { value: 'order_status',   label: 'Статусы' },
-  { value: 'order_rejected', label: 'Отклонённые' },
-  { value: 'system',         label: 'Система' },
+  { value: 'all',              label: 'Все' },
+  { value: 'NEW_ORDER',       label: 'Заказы' },
+  { value: 'ORDER_STATUS',    label: 'Статусы' },
+  { value: 'ORDER_CANCELLED', label: 'Отменённые' },
+  { value: 'NEW_REVIEW',      label: 'Отзывы' },
+  { value: 'SYSTEM',          label: 'Система' },
 ]
 
 const filtered = computed(() => {

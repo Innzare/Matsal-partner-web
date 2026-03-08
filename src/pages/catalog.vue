@@ -1,21 +1,20 @@
 <script lang="ts" setup>
-import { useMenuStore } from "@/stores/menu";
-import type { MenuItem } from "@/types";
+import { useCatalogStore } from "@/stores/catalog";
+import type { GroceryProduct } from "@/types";
 
-const menuStore = useMenuStore();
+const catalogStore = useCatalogStore();
 
 const itemDialog = ref(false);
 const categoriesDialog = ref(false);
-const modifiersDialog = ref(false);
 const deleteDialog = ref(false);
 
-const editingItem = ref<MenuItem | null>(null);
+const editingItem = ref<GroceryProduct | null>(null);
 const deleteItemId = ref<string | null>(null);
 const selectedIds = ref<string[]>([]);
 const viewMode = ref<"grid" | "list">("grid");
 
 onMounted(() => {
-  menuStore.loadMenu();
+  catalogStore.loadCatalog();
 });
 
 // Item actions
@@ -24,7 +23,7 @@ function openCreateDialog() {
   itemDialog.value = true;
 }
 
-function openEditDialog(item: MenuItem) {
+function openEditDialog(item: GroceryProduct) {
   editingItem.value = item;
   itemDialog.value = true;
 }
@@ -36,18 +35,18 @@ function openDeleteDialog(id: string) {
 
 function confirmDelete() {
   if (deleteItemId.value) {
-    menuStore.deleteItem(deleteItemId.value);
+    catalogStore.deleteProduct(deleteItemId.value);
     deleteItemId.value = null;
   }
 }
 
-async function handleSave(data: Omit<MenuItem, "id" | "sortOrder">, pendingImage?: File) {
+async function handleSave(data: Omit<GroceryProduct, "id" | "sortOrder">, pendingImage?: File) {
   if (editingItem.value) {
-    await menuStore.updateItem(editingItem.value.id, data);
+    await catalogStore.updateProduct(editingItem.value.id, data);
   } else {
-    const created = await menuStore.addItem(data);
+    const created = await catalogStore.addProduct(data);
     if (pendingImage && created) {
-      await menuStore.uploadItemImage(created.id, pendingImage);
+      await catalogStore.uploadProductImage(created.id, pendingImage);
     }
   }
 }
@@ -63,52 +62,57 @@ function toggleSelect(id: string) {
 }
 
 function bulkDisable() {
-  menuStore.bulkToggleAvailability(selectedIds.value, false);
+  catalogStore.bulkToggleAvailability(selectedIds.value, false);
   selectedIds.value = [];
 }
 
 function bulkEnable() {
-  menuStore.bulkToggleAvailability(selectedIds.value, true);
+  catalogStore.bulkToggleAvailability(selectedIds.value, true);
   selectedIds.value = [];
 }
 
 function bulkDelete() {
-  menuStore.bulkDelete(selectedIds.value);
+  catalogStore.bulkDelete(selectedIds.value);
   selectedIds.value = [];
 }
 
 // Categories
 const categoryTabs = computed(() => {
-  return [{ id: null, name: "Все" }, ...menuStore.sortedCategories];
+  return [{ id: null, name: "Все" }, ...catalogStore.sortedCategories];
 });
 
 // Table headers
 const tableHeaders = [
-  { key: 'name', title: 'Позиция' },
+  { key: 'name', title: 'Товар' },
   { key: 'category', title: 'Категория', width: '140px' },
   { key: 'price', title: 'Цена', align: 'end' as const, width: '110px' },
-  { key: 'weight', title: 'Вес', align: 'end' as const, width: '90px' },
+  { key: 'unit', title: 'Ед. изм.', width: '100px' },
   { key: 'available', title: 'Статус', width: '120px' },
   { key: 'actions', title: '', sortable: false, width: '90px' },
 ];
 
 // Helpers
 function getCategoryName(catId: string): string {
-  return menuStore.categories.find((c) => c.id === catId)?.name ?? "—";
+  return catalogStore.categories.find((c) => c.id === catId)?.name ?? "—";
+}
+
+function getUnitLabel(item: GroceryProduct): string {
+  if (item.unitValue === 1) return item.unit;
+  return `${item.unitValue} ${item.unit}`;
 }
 
 // Stats
-const totalItems = computed(() => menuStore.items.length);
+const totalItems = computed(() => catalogStore.products.length);
 const availableItems = computed(
-  () => menuStore.items.filter((i) => i.available).length,
+  () => catalogStore.products.filter((i) => i.available).length,
 );
 const stoppedItems = computed(
-  () => menuStore.items.filter((i) => !i.available).length,
+  () => catalogStore.products.filter((i) => !i.available).length,
 );
 
 // Sections grouped by category
 const sections = computed(() => {
-  const items = menuStore.filteredItems;
+  const items = catalogStore.filteredProducts;
   const grouped = new Map<string, typeof items>();
 
   for (const item of items) {
@@ -117,7 +121,7 @@ const sections = computed(() => {
     grouped.set(item.categoryId, list);
   }
 
-  return menuStore.sortedCategories
+  return catalogStore.sortedCategories
     .filter((c) => grouped.has(c.id))
     .map((cat) => ({
       id: cat.id,
@@ -128,19 +132,18 @@ const sections = computed(() => {
 </script>
 
 <template>
-  <div class="menu-page">
+  <div class="cat-page">
     <!-- Loading -->
-    <div v-if="menuStore.isLoading" class="d-flex justify-center py-16">
+    <div v-if="catalogStore.isLoading" class="d-flex justify-center py-16">
       <v-progress-circular indeterminate color="primary" />
     </div>
 
     <template v-else>
       <!-- Header -->
-      <div class="menu-header">
+      <div class="cat-header">
         <div>
-          <!-- <h1 class="menu-header__title">Меню</h1> -->
-          <p class="menu-header__sub">
-            {{ totalItems }} позиций · {{ availableItems }} доступно ·
+          <p class="cat-header__sub">
+            {{ totalItems }} товаров · {{ availableItems }} доступно ·
             {{ stoppedItems }} в стопе
           </p>
         </div>
@@ -149,19 +152,10 @@ const sections = computed(() => {
             color="#fff"
             rounded="lg"
             prepend-icon="mdi-shape-outline"
-            class="menu-btn-sec"
+            class="cat-btn-sec"
             @click="categoriesDialog = true"
           >
             Категории
-          </v-btn>
-          <v-btn
-            color="#fff"
-            rounded="lg"
-            prepend-icon="mdi-tune-variant"
-            class="menu-btn-sec"
-            @click="modifiersDialog = true"
-          >
-            Модификаторы
           </v-btn>
           <v-btn
             color="primary"
@@ -169,22 +163,22 @@ const sections = computed(() => {
             prepend-icon="mdi-plus"
             @click="openCreateDialog"
           >
-            Добавить позицию
+            Добавить товар
           </v-btn>
         </div>
       </div>
 
       <!-- Toolbar row -->
-      <div class="menu-toolbar">
+      <div class="cat-toolbar">
         <v-text-field
-          v-model="menuStore.searchQuery"
+          v-model="catalogStore.searchQuery"
           placeholder="Поиск по названию..."
           variant="outlined"
           density="compact"
           prepend-inner-icon="mdi-magnify"
           rounded="lg"
           hide-details
-          class="menu-search"
+          class="cat-search"
           bg-color="white"
         />
 
@@ -213,30 +207,28 @@ const sections = computed(() => {
       </div>
 
       <!-- Category chips -->
-      <div class="menu-categories">
+      <div class="cat-categories">
         <div
           v-for="cat in categoryTabs"
           :key="cat.id ?? 'all'"
-          class="menu-cat-chip"
+          class="cat-cat-chip"
           :class="{
-            'menu-cat-chip--active': menuStore.selectedCategory === cat.id,
+            'cat-cat-chip--active': catalogStore.selectedCategory === cat.id,
           }"
-          @click="menuStore.selectedCategory = cat.id"
+          @click="catalogStore.selectedCategory = cat.id"
         >
           {{ cat.name }}
-          <span v-if="cat.id !== null" class="menu-cat-chip__count">
-            {{ menuStore.items.filter((i) => i.categoryId === cat.id).length }}
+          <span v-if="cat.id !== null" class="cat-cat-chip__count">
+            {{ catalogStore.products.filter((i) => i.categoryId === cat.id).length }}
           </span>
         </div>
       </div>
 
       <!-- Bulk actions bar -->
       <v-slide-y-transition>
-        <div v-if="selectedIds.length > 0" class="menu-bulk">
+        <div v-if="selectedIds.length > 0" class="cat-bulk">
           <v-icon icon="mdi-checkbox-marked" size="18" color="primary" />
-          <span class="menu-bulk__count"
-            >Выбрано: {{ selectedIds.length }}</span
-          >
+          <span class="cat-bulk__count">Выбрано: {{ selectedIds.length }}</span>
           <v-spacer />
           <v-btn
             size="small"
@@ -273,30 +265,30 @@ const sections = computed(() => {
       </v-slide-y-transition>
 
       <!-- Empty state -->
-      <div v-if="menuStore.filteredItems.length === 0" class="menu-empty">
-        <v-icon icon="mdi-food-off" size="48" color="grey-lighten-1" />
-        <p class="text-body-1 text-grey mt-3">Нет позиций</p>
+      <div v-if="catalogStore.filteredProducts.length === 0" class="cat-empty">
+        <v-icon icon="mdi-package-variant-closed-remove" size="48" color="grey-lighten-1" />
+        <p class="text-body-1 text-grey mt-3">Нет товаров</p>
         <p class="text-caption text-grey-lighten-1">
-          Добавьте первую позицию или измените фильтр
+          Добавьте первый товар или измените фильтр
         </p>
       </div>
 
       <!-- Grid View -->
-      <div v-else-if="viewMode === 'grid'" class="menu-sections">
-        <div v-for="section in sections" :key="section.id" class="menu-section">
-          <div v-if="!menuStore.selectedCategory" class="menu-section__header">
-            <span class="menu-section__title">{{ section.title }}</span>
-            <span class="menu-section__count">{{ section.items.length }}</span>
+      <div v-else-if="viewMode === 'grid'" class="cat-sections">
+        <div v-for="section in sections" :key="section.id" class="cat-section">
+          <div v-if="!catalogStore.selectedCategory" class="cat-section__header">
+            <span class="cat-section__title">{{ section.title }}</span>
+            <span class="cat-section__count">{{ section.items.length }}</span>
           </div>
-          <div class="menu-grid">
-            <MenuItemCard
+          <div class="cat-grid">
+            <ProductCard
               v-for="item in section.items"
               :key="item.id"
               :item="item"
               :selected="selectedIds.includes(item.id)"
               @edit="openEditDialog"
               @delete="openDeleteDialog"
-              @toggle-availability="menuStore.toggleAvailability"
+              @toggle-availability="catalogStore.toggleAvailability"
               @select="toggleSelect"
             />
           </div>
@@ -304,81 +296,79 @@ const sections = computed(() => {
       </div>
 
       <!-- List View -->
-      <div v-else class="menu-sections">
-        <div v-for="section in sections" :key="section.id" class="menu-section">
-          <div v-if="!menuStore.selectedCategory" class="menu-section__header">
-            <span class="menu-section__title">{{ section.title }}</span>
-            <span class="menu-section__count">{{ section.items.length }}</span>
+      <div v-else class="cat-sections">
+        <div v-for="section in sections" :key="section.id" class="cat-section">
+          <div v-if="!catalogStore.selectedCategory" class="cat-section__header">
+            <span class="cat-section__title">{{ section.title }}</span>
+            <span class="cat-section__count">{{ section.items.length }}</span>
           </div>
-          <v-card flat rounded="xl" class="mt-table-card">
+          <v-card flat rounded="xl" class="ct-table-card">
             <v-data-table
               :items="section.items"
               :headers="tableHeaders"
               :items-per-page="-1"
               hover
-              class="mt-table"
+              class="ct-table"
             >
               <template #bottom />
 
               <template #item.name="{ item }">
                 <div class="d-flex align-center ga-3">
-                  <div class="mt-img">
+                  <div class="ct-img">
                     <v-img
                       v-if="item.image"
                       :src="item.image"
                       cover
-                      class="mt-img__inner"
+                      class="ct-img__inner"
                     />
                     <v-icon
                       v-else
-                      icon="mdi-food"
+                      icon="mdi-package-variant"
                       size="18"
                       color="grey-lighten-1"
                     />
                   </div>
-                  <div class="mt-info">
-                    <p class="mt-info__name">{{ item.name }}</p>
-                    <p class="mt-info__desc">{{ item.description }}</p>
+                  <div class="ct-info">
+                    <p class="ct-info__name">{{ item.name }}</p>
+                    <p class="ct-info__desc">{{ item.description }}</p>
                   </div>
                 </div>
               </template>
 
               <template #item.category="{ item }">
-                <span class="mt-category">{{
+                <span class="ct-category">{{
                   getCategoryName(item.categoryId)
                 }}</span>
               </template>
 
               <template #item.price="{ item }">
-                <span class="mt-price"
+                <span class="ct-price"
                   >{{ item.price.toLocaleString("ru-RU") }} ₽</span
                 >
               </template>
 
-              <template #item.weight="{ item }">
-                <span class="mt-weight">{{
-                  item.weight ? item.weight + " г" : "—"
-                }}</span>
+              <template #item.unit="{ item }">
+                <span class="ct-unit">{{ getUnitLabel(item) }}</span>
               </template>
 
               <template #item.available="{ item }">
                 <div
-                  class="mt-status"
-                  :class="item.available ? 'mt-status--on' : 'mt-status--off'"
-                  @click.stop="menuStore.toggleAvailability(item.id)"
+                  class="ct-status"
+                  :class="item.available ? 'ct-status--on' : 'ct-status--off'"
+                  @click.stop="catalogStore.toggleAvailability(item.id)"
                 >
-                  <span class="mt-status__dot" />
+                  <span class="ct-status__dot" />
                   {{ item.available ? "Активно" : "Стоп" }}
                 </div>
               </template>
 
               <template #item.actions="{ item }">
-                <div class="mt-actions">
-                  <button class="mt-action" @click.stop="openEditDialog(item)">
+                <div class="ct-actions">
+                  <button class="ct-action" @click.stop="openEditDialog(item)">
                     <v-icon icon="mdi-pencil-outline" size="15" />
                   </button>
                   <button
-                    class="mt-action mt-action--danger"
+                    class="ct-action ct-action--danger"
                     @click.stop="openDeleteDialog(item.id)"
                   >
                     <v-icon icon="mdi-delete-outline" size="15" />
@@ -392,35 +382,26 @@ const sections = computed(() => {
     </template>
 
     <!-- Dialogs -->
-    <MenuItemDialog
+    <ProductDialog
       v-model="itemDialog"
       :item="editingItem"
-      :categories="menuStore.categories"
-      :modifier-groups="menuStore.modifierGroups"
+      :categories="catalogStore.categories"
       @save="handleSave"
     />
 
-    <CategoriesDialog
+    <GroceryCategoriesDialog
       v-model="categoriesDialog"
-      :categories="menuStore.categories"
-      @add="menuStore.addCategory"
-      @update="menuStore.updateCategory"
-      @delete="menuStore.deleteCategory"
-      @reorder="menuStore.reorderCategories"
-    />
-
-    <ModifiersDialog
-      v-model="modifiersDialog"
-      :modifier-groups="menuStore.modifierGroups"
-      @add="menuStore.addModifierGroup"
-      @update="menuStore.updateModifierGroup"
-      @delete="menuStore.deleteModifierGroup"
+      :categories="catalogStore.categories"
+      @add="catalogStore.addCategory"
+      @update="catalogStore.updateCategory"
+      @delete="catalogStore.deleteCategory"
+      @reorder="catalogStore.reorderCategories"
     />
 
     <ConfirmDialog
       v-model="deleteDialog"
-      title="Удалить позицию?"
-      text="Позиция будет удалена из меню."
+      title="Удалить товар?"
+      text="Товар будет удалён из каталога."
       confirm-text="Удалить"
       confirm-color="red"
       @confirm="confirmDelete"
@@ -429,12 +410,12 @@ const sections = computed(() => {
 </template>
 
 <style scoped>
-.menu-page {
+.cat-page {
   padding: 0 32px 32px;
 }
 
-/* ── Header ── */
-.menu-header {
+/* Header */
+.cat-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -442,39 +423,33 @@ const sections = computed(() => {
   padding-top: 20px;
 }
 
-.menu-header__title {
-  font-size: 24px;
-  font-weight: 700;
-  color: #1a1a2e;
-}
-
-.menu-header__sub {
+.cat-header__sub {
   font-size: 13px;
   color: #9ca3af;
   margin-top: 2px;
 }
 
-/* ── Toolbar ── */
-.menu-toolbar {
+/* Toolbar */
+.cat-toolbar {
   display: flex;
   align-items: center;
   gap: 12px;
   margin-bottom: 16px;
 }
 
-.menu-search {
+.cat-search {
   max-width: 320px;
 }
 
-/* ── Category chips ── */
-.menu-categories {
+/* Category chips */
+.cat-categories {
   display: flex;
   gap: 8px;
   margin-bottom: 20px;
   flex-wrap: wrap;
 }
 
-.menu-cat-chip {
+.cat-cat-chip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -490,18 +465,18 @@ const sections = computed(() => {
   user-select: none;
 }
 
-.menu-cat-chip:hover {
+.cat-cat-chip:hover {
   border-color: #d1d5db;
   background: #f9fafb;
 }
 
-.menu-cat-chip--active {
-  background: #ea004b;
-  border-color: #ea004b;
+.cat-cat-chip--active {
+  background: #16a34a;
+  border-color: #16a34a;
   color: #fff;
 }
 
-.menu-cat-chip__count {
+.cat-cat-chip__count {
   font-size: 11px;
   min-width: 18px;
   height: 18px;
@@ -511,12 +486,12 @@ const sections = computed(() => {
   background: rgba(0, 0, 0, 0.08);
 }
 
-.menu-cat-chip--active .menu-cat-chip__count {
+.cat-cat-chip--active .cat-cat-chip__count {
   background: rgba(255, 255, 255, 0.25);
 }
 
-/* ── Bulk bar ── */
-.menu-bulk {
+/* Bulk bar */
+.cat-bulk {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -526,41 +501,41 @@ const sections = computed(() => {
   margin-bottom: 16px;
 }
 
-.menu-bulk__count {
+.cat-bulk__count {
   font-size: 13px;
   font-weight: 600;
   color: #1e40af;
 }
 
-/* ── Empty ── */
-.menu-empty {
+/* Empty */
+.cat-empty {
   display: flex;
   flex-direction: column;
   align-items: center;
   padding: 64px 0;
 }
 
-/* ── Sections ── */
-.menu-sections {
+/* Sections */
+.cat-sections {
   display: flex;
   flex-direction: column;
   gap: 28px;
 }
 
-.menu-section__header {
+.cat-section__header {
   display: flex;
   align-items: center;
   gap: 10px;
   margin-bottom: 14px;
 }
 
-.menu-section__title {
+.cat-section__title {
   font-size: 16px;
   font-weight: 700;
   color: #1a1a2e;
 }
 
-.menu-section__count {
+.cat-section__count {
   font-size: 12px;
   font-weight: 600;
   min-width: 22px;
@@ -572,19 +547,19 @@ const sections = computed(() => {
   background: #f3f4f6;
 }
 
-/* ── Grid ── */
-.menu-grid {
+/* Grid */
+.cat-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 16px;
 }
 
-/* ── List table ── */
-.mt-table-card {
+/* List table */
+.ct-table-card {
   overflow: hidden;
 }
 
-.mt-table :deep(th) {
+.ct-table :deep(th) {
   font-size: 12px !important;
   font-weight: 600 !important;
   color: #9ca3af !important;
@@ -593,18 +568,18 @@ const sections = computed(() => {
   white-space: nowrap;
 }
 
-.mt-table :deep(td) {
+.ct-table :deep(td) {
   padding-top: 12px !important;
   padding-bottom: 12px !important;
   border-bottom: 1px solid #f5f5f5 !important;
 }
 
-.mt-table :deep(tr:hover td) {
+.ct-table :deep(tr:hover td) {
   background: #fafafa !important;
 }
 
 /* Image */
-.mt-img {
+.ct-img {
   width: 48px;
   height: 48px;
   border-radius: 10px;
@@ -616,17 +591,17 @@ const sections = computed(() => {
   flex-shrink: 0;
 }
 
-.mt-img__inner {
+.ct-img__inner {
   width: 100%;
   height: 100%;
 }
 
 /* Info */
-.mt-info {
+.ct-info {
   min-width: 0;
 }
 
-.mt-info__name {
+.ct-info__name {
   font-size: 14px;
   font-weight: 600;
   color: #1a1a2e;
@@ -635,7 +610,7 @@ const sections = computed(() => {
   text-overflow: ellipsis;
 }
 
-.mt-info__desc {
+.ct-info__desc {
   font-size: 12px;
   color: #9ca3af;
   margin-top: 2px;
@@ -646,7 +621,7 @@ const sections = computed(() => {
 }
 
 /* Category */
-.mt-category {
+.ct-category {
   font-size: 12px;
   font-weight: 500;
   color: #6b7280;
@@ -656,21 +631,21 @@ const sections = computed(() => {
 }
 
 /* Price */
-.mt-price {
+.ct-price {
   font-size: 14px;
   font-weight: 700;
   color: #1a1a2e;
   white-space: nowrap;
 }
 
-/* Weight */
-.mt-weight {
+/* Unit */
+.ct-unit {
   font-size: 13px;
   color: #9ca3af;
 }
 
 /* Status */
-.mt-status {
+.ct-status {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -683,48 +658,48 @@ const sections = computed(() => {
   white-space: nowrap;
 }
 
-.mt-status:hover {
+.ct-status:hover {
   opacity: 0.8;
 }
 
-.mt-status__dot {
+.ct-status__dot {
   width: 7px;
   height: 7px;
   border-radius: 50%;
   flex-shrink: 0;
 }
 
-.mt-status--on {
+.ct-status--on {
   color: #16a34a;
   background: #e8f5e9;
 }
 
-.mt-status--on .mt-status__dot {
+.ct-status--on .ct-status__dot {
   background: #16a34a;
 }
 
-.mt-status--off {
+.ct-status--off {
   color: #dc2626;
   background: #fef2f2;
 }
 
-.mt-status--off .mt-status__dot {
+.ct-status--off .ct-status__dot {
   background: #dc2626;
 }
 
 /* Actions */
-.mt-actions {
+.ct-actions {
   display: flex;
   gap: 2px;
   opacity: 0;
   transition: opacity 0.1s;
 }
 
-.mt-table :deep(tr:hover) .mt-actions {
+.ct-table :deep(tr:hover) .ct-actions {
   opacity: 1;
 }
 
-.mt-action {
+.ct-action {
   width: 30px;
   height: 30px;
   display: flex;
@@ -738,130 +713,126 @@ const sections = computed(() => {
   transition: all 0.1s;
 }
 
-.mt-action:hover {
+.ct-action:hover {
   background: #f3f4f6;
   color: #374151;
 }
 
-.mt-action--danger:hover {
+.ct-action--danger:hover {
   background: #fef2f2;
   color: #dc2626;
 }
 
-/* ── Dark Theme ── */
-.dark .menu-header__title {
-  color: #e4e4e7;
-}
-
-.dark .menu-btn-sec {
+/* Dark Theme */
+.dark .cat-btn-sec {
   background-color: #252538 !important;
   color: #e4e4e7 !important;
 }
 
-.dark .menu-cat-chip {
+.dark .cat-cat-chip {
   color: #a1a1aa;
   background: #1e1e2e;
   border-color: #2e2e42;
 }
 
-.dark .menu-cat-chip:hover {
+.dark .cat-cat-chip:hover {
   background: #252538;
   border-color: #3f3f5a;
 }
 
-.dark .menu-cat-chip__count {
+.dark .cat-cat-chip__count {
   background: rgba(255, 255, 255, 0.08);
 }
 
-.dark .menu-bulk {
+.dark .cat-bulk {
   background: rgba(25, 118, 210, 0.12);
 }
 
-.dark .menu-bulk__count {
+.dark .cat-bulk__count {
   color: #60a5fa;
 }
 
-.dark .menu-search :deep(.v-field) {
+.dark .cat-search :deep(.v-field) {
   background: #252538 !important;
 }
 
-.dark .menu-section__title {
+.dark .cat-section__title {
   color: #e4e4e7;
 }
 
-.dark .menu-section__count {
+.dark .cat-section__count {
   color: #a1a1aa;
   background: #252538;
 }
 
-.dark .mt-table :deep(td) {
+.dark .ct-table :deep(td) {
   border-bottom-color: #2e2e42 !important;
 }
 
-.dark .mt-table :deep(tr:hover td) {
+.dark .ct-table :deep(tr:hover td) {
   background: #252538 !important;
 }
 
-.dark .mt-img {
+.dark .ct-img {
   background: #252538;
 }
 
-.dark .mt-info__name {
+.dark .ct-info__name {
   color: #e4e4e7;
 }
 
-.dark .mt-category {
+.dark .ct-category {
   color: #a1a1aa;
   background: #252538;
 }
 
-.dark .mt-price {
+.dark .ct-price {
   color: #e4e4e7;
 }
 
-.dark .mt-status--on {
+.dark .ct-status--on {
   color: #4ade80;
   background: rgba(22, 163, 74, 0.15);
 }
 
-.dark .mt-status--off {
+.dark .ct-status--off {
   color: #f87171;
   background: rgba(220, 38, 38, 0.15);
 }
 
-.dark .mt-action:hover {
+.dark .ct-action:hover {
   background: #252538;
   color: #e4e4e7;
 }
 
-.dark .mt-action--danger:hover {
+.dark .ct-action--danger:hover {
   background: rgba(220, 38, 38, 0.15);
   color: #f87171;
 }
 
-/* ── Responsive ── */
+/* Responsive */
 @media (max-width: 767px) {
-  .menu-page {
+  .cat-page {
     padding: 0 16px 24px;
   }
 
-  .menu-header {
+  .cat-header {
     flex-direction: column;
     align-items: flex-start;
     gap: 12px;
   }
 
-  .menu-toolbar {
+  .cat-toolbar {
     flex-wrap: wrap;
   }
 
-  .menu-search {
+  .cat-search {
     max-width: 100%;
     flex: 1;
     min-width: 0;
   }
 
-  .menu-grid {
+  .cat-grid {
     grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   }
 }

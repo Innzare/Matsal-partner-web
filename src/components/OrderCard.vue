@@ -3,6 +3,7 @@ import type { PartnerOrder } from '@/types'
 
 defineProps<{
   order: PartnerOrder
+  loading?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -51,6 +52,7 @@ function timeAgo(date: string): string {
         variant="outlined"
         size="small"
         rounded="lg"
+        :disabled="loading"
         @click.stop="emit('reject', order.id)"
       >
         Отклонить
@@ -61,6 +63,7 @@ function timeAgo(date: string): string {
         variant="flat"
         size="small"
         rounded="lg"
+        :loading="loading"
         @click.stop="emit('accept', order.id)"
       >
         Принять
@@ -74,6 +77,7 @@ function timeAgo(date: string): string {
         size="small"
         rounded="lg"
         block
+        :loading="loading"
         @click.stop="emit('ready', order.id)"
       >
         Готов к выдаче
@@ -87,6 +91,7 @@ function timeAgo(date: string): string {
         size="small"
         rounded="lg"
         block
+        :loading="loading"
         @click.stop="emit('pickedUp', order.id)"
       >
         Курьер забрал

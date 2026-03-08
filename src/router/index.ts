@@ -3,6 +3,7 @@ import { createRouter, createWebHistory } from "vue-router";
 import { setupLayouts } from "virtual:generated-layouts";
 import { routes } from "vue-router/auto-routes";
 import { useAuthStore } from "@/stores/auth";
+import type { UserRole } from "@/types";
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -10,14 +11,28 @@ const router = createRouter({
 });
 
 // Публичные маршруты (доступны без авторизации)
-const publicRoutes = ["/login", "/forgot-password"];
+const publicRoutes = ["/login", "/forgot-password", "/invite"];
+
+// Карта доступа: какие роли имеют доступ к каким маршрутам
+const ROUTE_ACCESS: Record<string, UserRole[]> = {
+  "/dashboard": ["OWNER"],
+  "/menu": ["OWNER", "MANAGER"],
+  "/catalog": ["OWNER", "MANAGER"],
+  "/reviews": ["OWNER", "MANAGER"],
+  "/promotion": ["OWNER"],
+  "/push-campaigns": ["OWNER"],
+  "/search-boost": ["OWNER"],
+  "/badges": ["OWNER"],
+  "/settings": ["OWNER"],
+  "/staff": ["OWNER"],
+};
 
 // Маршруты для авторизованных пользователей
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore();
 
   // Проверяем, является ли маршрут публичным
-  const isPublicRoute = publicRoutes.includes(to.path);
+  const isPublicRoute = publicRoutes.some(r => to.path.startsWith(r));
 
   // Если пользователь не авторизован
   if (!authStore.isAuthenticated) {
@@ -35,14 +50,15 @@ router.beforeEach(async (to, from, next) => {
 
   // Если пользователь авторизован и пытается зайти на страницу входа
   if (authStore.isAuthenticated && to.path === "/login") {
-    return next("/dashboard");
+    return next("/orders");
   }
 
-  // Проверка прав доступа по ролям (опционально)
-  if (to.meta.requiresRole) {
-    const requiredRole = to.meta.requiresRole as string;
-    if (authStore.userRole !== requiredRole && authStore.userRole !== "admin") {
-      return next("/dashboard"); // Перенаправляем если нет прав
+  // Проверка прав доступа по ролям
+  const role = authStore.userRole as UserRole | undefined;
+  if (role) {
+    const allowedRoles = ROUTE_ACCESS[to.path];
+    if (allowedRoles && !allowedRoles.includes(role)) {
+      return next("/orders"); // Все роли имеют доступ к заказам
     }
   }
 

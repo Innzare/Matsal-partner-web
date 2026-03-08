@@ -1,3 +1,40 @@
+// ===== Роли =====
+
+export type UserRole = 'OWNER' | 'MANAGER' | 'OPERATOR'
+
+export const ROLE_LABELS: Record<UserRole, string> = {
+  OWNER: 'Владелец',
+  MANAGER: 'Менеджер',
+  OPERATOR: 'Оператор',
+}
+
+export const ROLE_COLORS: Record<UserRole, string> = {
+  OWNER: '#ea004b',
+  MANAGER: '#3b82f6',
+  OPERATOR: '#22c55e',
+}
+
+// ===== Работники =====
+
+export interface StaffMember {
+  id: string
+  name: string
+  email: string
+  phone: string
+  role: UserRole
+  position: string | null
+  createdAt: string
+}
+
+export interface StaffInvite {
+  id: string
+  email: string
+  role: UserRole
+  expiresAt: string
+  usedAt: string | null
+  createdAt: string
+}
+
 // ===== Заказы =====
 
 export type PartnerOrderStatus = 'incoming' | 'preparing' | 'ready' | 'completed' | 'rejected'
@@ -114,7 +151,7 @@ export interface MenuItem {
   sortOrder: number
 }
 
-// ===== Ресторан =====
+// ===== Расписание =====
 
 export interface DaySchedule {
   open: string
@@ -134,6 +171,51 @@ export const WEEKDAY_LABELS: Record<WeekDay, string> = {
   sunday: 'Воскресенье',
 }
 
+// ===== Каталог магазина =====
+
+export interface GroceryCategory {
+  id: string
+  name: string
+  image: string | null
+  sortOrder: number
+}
+
+export interface GroceryProduct {
+  id: string
+  name: string
+  description: string
+  price: number
+  image: string | null
+  available: boolean
+  sortOrder: number
+  unit: string
+  unitValue: number
+  barcode: string | null
+  categoryId: string
+}
+
+export interface GroceryStoreProfile {
+  id: string
+  name: string
+  description: string | null
+  address: string
+  phone: string | null
+  imageUrl: string | null
+  logo: string | null
+  rating: number
+  reviewsCount: number
+  isActive: boolean
+  isOpen: boolean
+  autoSchedule: boolean
+  workingHours: Record<WeekDay, DaySchedule> | null
+  deliveryTime: string | null
+  minOrderAmount: number
+  createdAt: string
+  updatedAt: string
+}
+
+// ===== Ресторан =====
+
 export interface RestaurantProfile {
   id: string
   name: string
@@ -146,6 +228,7 @@ export interface RestaurantProfile {
   reviewsCount: number
   isActive: boolean
   isOpen: boolean
+  autoSchedule: boolean
   workingHours: Record<WeekDay, DaySchedule> | null
   deliveryTime: string | null
   minOrderAmount: number
@@ -157,17 +240,14 @@ export interface RestaurantProfile {
 // ===== Отзывы =====
 
 export interface Review {
-  id: number
-  author: string
-  avatar?: string
+  id: string
+  customerName: string
   rating: number
   text: string
-  date: string
-  orderType: OrderType
-  orderNumber: number
-  items: string[]
-  reply?: string
-  repliedAt?: string
+  orderId: string | null
+  reply?: string | null
+  repliedAt?: string | null
+  createdAt: string
 }
 
 // ===== Статусы заказов =====
@@ -191,11 +271,14 @@ export const ORDER_STATUS_COLORS: Record<PartnerOrderStatus, string> = {
 // ===== Уведомления =====
 
 export type NotificationType =
-  | 'new_order'
-  | 'order_status'
-  | 'new_review'
-  | 'order_rejected'
-  | 'system'
+  | 'NEW_ORDER'
+  | 'ORDER_STATUS'
+  | 'ORDER_CANCELLED'
+  | 'ORDER_AVAILABLE'
+  | 'NEW_REVIEW'
+  | 'REVIEW_REPLY'
+  | 'PROMO'
+  | 'SYSTEM'
 
 export interface Notification {
   id: string
@@ -204,26 +287,29 @@ export interface Notification {
   message: string
   createdAt: string
   isRead: boolean
-  orderId?: string
-  orderNumber?: number
-  reviewId?: number
-  meta?: Record<string, string | number>
+  meta?: Record<string, any>
 }
 
 export const NOTIFICATION_TYPE_ICONS: Record<NotificationType, string> = {
-  new_order:     'mdi-receipt-text',
-  order_status:  'mdi-swap-horizontal',
-  new_review:    'mdi-star-outline',
-  order_rejected:'mdi-close-circle-outline',
-  system:        'mdi-bell-outline',
+  NEW_ORDER:       'mdi-receipt-text',
+  ORDER_STATUS:    'mdi-swap-horizontal',
+  ORDER_CANCELLED: 'mdi-close-circle-outline',
+  ORDER_AVAILABLE: 'mdi-moped-outline',
+  NEW_REVIEW:      'mdi-star-outline',
+  REVIEW_REPLY:    'mdi-reply-outline',
+  PROMO:           'mdi-tag-outline',
+  SYSTEM:          'mdi-bell-outline',
 }
 
 export const NOTIFICATION_TYPE_COLORS: Record<NotificationType, string> = {
-  new_order:     '#3b82f6',
-  order_status:  '#f97316',
-  new_review:    '#eab308',
-  order_rejected:'#ef4444',
-  system:        '#8b5cf6',
+  NEW_ORDER:       '#3b82f6',
+  ORDER_STATUS:    '#f97316',
+  ORDER_CANCELLED: '#ef4444',
+  ORDER_AVAILABLE: '#10b981',
+  NEW_REVIEW:      '#eab308',
+  REVIEW_REPLY:    '#8b5cf6',
+  PROMO:           '#ec4899',
+  SYSTEM:          '#6b7280',
 }
 
 // ===== Продвижение =====

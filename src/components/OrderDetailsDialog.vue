@@ -9,6 +9,7 @@ import {
 const props = defineProps<{
   modelValue: boolean
   order: PartnerOrder | null
+  loading?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -258,28 +259,31 @@ const steps = computed(() => {
       <div v-if="order.status !== 'completed' && order.status !== 'rejected'" class="od-footer">
         <!-- Incoming: Accept / Reject -->
         <template v-if="order.status === 'incoming'">
-          <button class="od-btn od-btn--reject" @click="emit('reject', order.id)">
+          <button class="od-btn od-btn--reject" :disabled="loading" @click="emit('reject', order.id)">
             <v-icon icon="mdi-close" size="16" />
             Отклонить
           </button>
-          <button class="od-btn od-btn--accept" @click="emit('accept', order.id)">
-            <v-icon icon="mdi-check" size="16" />
+          <button class="od-btn od-btn--accept" :disabled="loading" @click="emit('accept', order.id)">
+            <v-progress-circular v-if="loading" indeterminate size="16" width="2" color="white" />
+            <v-icon v-else icon="mdi-check" size="16" />
             Принять заказ
           </button>
         </template>
 
         <!-- Preparing: Mark ready -->
         <template v-if="order.status === 'preparing'">
-          <button class="od-btn od-btn--ready" @click="emit('ready', order.id)">
-            <v-icon icon="mdi-food-outline" size="16" />
+          <button class="od-btn od-btn--ready" :disabled="loading" @click="emit('ready', order.id)">
+            <v-progress-circular v-if="loading" indeterminate size="16" width="2" color="white" />
+            <v-icon v-else icon="mdi-food-outline" size="16" />
             Заказ готов
           </button>
         </template>
 
         <!-- Ready: Picked up -->
         <template v-if="order.status === 'ready'">
-          <button class="od-btn od-btn--pickup" @click="emit('pickedUp', order.id)">
-            <v-icon icon="mdi-check-all" size="16" />
+          <button class="od-btn od-btn--pickup" :disabled="loading" @click="emit('pickedUp', order.id)">
+            <v-progress-circular v-if="loading" indeterminate size="16" width="2" color="white" />
+            <v-icon v-else icon="mdi-check-all" size="16" />
             Курьер забрал
           </button>
         </template>
@@ -650,6 +654,11 @@ const steps = computed(() => {
 
 .od-btn--pickup:hover {
   background: #c00040;
+}
+
+.od-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 /* ── Dark Theme ── */

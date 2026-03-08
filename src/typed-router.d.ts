@@ -20,7 +20,9 @@ declare module 'vue-router/auto-routes' {
   export interface RouteNamedMap {
     '/': RouteRecordInfo<'/', '/', Record<never, never>, Record<never, never>>,
     '/badges': RouteRecordInfo<'/badges', '/badges', Record<never, never>, Record<never, never>>,
+    '/catalog': RouteRecordInfo<'/catalog', '/catalog', Record<never, never>, Record<never, never>>,
     '/dashboard': RouteRecordInfo<'/dashboard', '/dashboard', Record<never, never>, Record<never, never>>,
+    '/invite': RouteRecordInfo<'/invite', '/invite', Record<never, never>, Record<never, never>>,
     '/login': RouteRecordInfo<'/login', '/login', Record<never, never>, Record<never, never>>,
     '/menu': RouteRecordInfo<'/menu', '/menu', Record<never, never>, Record<never, never>>,
     '/notifications': RouteRecordInfo<'/notifications', '/notifications', Record<never, never>, Record<never, never>>,
@@ -30,6 +32,7 @@ declare module 'vue-router/auto-routes' {
     '/reviews': RouteRecordInfo<'/reviews', '/reviews', Record<never, never>, Record<never, never>>,
     '/search-boost': RouteRecordInfo<'/search-boost', '/search-boost', Record<never, never>, Record<never, never>>,
     '/settings': RouteRecordInfo<'/settings', '/settings', Record<never, never>, Record<never, never>>,
+    '/staff': RouteRecordInfo<'/staff', '/staff', Record<never, never>, Record<never, never>>,
   }
 
   /**
@@ -51,8 +54,16 @@ declare module 'vue-router/auto-routes' {
       routes: '/badges'
       views: never
     }
+    'src/pages/catalog.vue': {
+      routes: '/catalog'
+      views: never
+    }
     'src/pages/dashboard.vue': {
       routes: '/dashboard'
+      views: never
+    }
+    'src/pages/invite.vue': {
+      routes: '/invite'
       views: never
     }
     'src/pages/login.vue': {
@@ -89,6 +100,10 @@ declare module 'vue-router/auto-routes' {
     }
     'src/pages/settings.vue': {
       routes: '/settings'
+      views: never
+    }
+    'src/pages/staff.vue': {
+      routes: '/staff'
       views: never
     }
   }

@@ -1,8 +1,14 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { Review } from '@/types'
-import { IS_MOCK } from '@/api'
+import { api, IS_MOCK } from '@/api'
 import { MOCK_REVIEWS } from '@/api/mock-data'
+
+interface ReviewStats {
+  average: number
+  total: number
+  distribution: { stars: number; count: number }[]
+}
 
 export const useReviewsStore = defineStore('reviews', () => {
   const reviews = ref<Review[]>([])
@@ -17,13 +23,13 @@ export const useReviewsStore = defineStore('reviews', () => {
         reviews.value = structuredClone(MOCK_REVIEWS)
         return
       }
-      // TODO: real API
+      reviews.value = await api.get<Review[]>('/restaurant/reviews')
     } finally {
       isLoading.value = false
     }
   }
 
-  const replyToReview = async (reviewId: number, text: string) => {
+  const replyToReview = async (reviewId: string, text: string) => {
     if (IS_MOCK) {
       await new Promise(r => setTimeout(r, 400))
       const review = reviews.value.find(r => r.id === reviewId)
@@ -33,12 +39,16 @@ export const useReviewsStore = defineStore('reviews', () => {
       }
       return
     }
-    // TODO: real API
+    const updated = await api.patch<Review>(`/restaurant/reviews/${reviewId}/reply`, { text })
+    const idx = reviews.value.findIndex(r => r.id === reviewId)
+    if (idx !== -1) {
+      reviews.value[idx] = updated
+    }
   }
 
   // Getters
   const sortedReviews = computed(() =>
-    [...reviews.value].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+    [...reviews.value].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
   )
 
   const averageRating = computed(() => {

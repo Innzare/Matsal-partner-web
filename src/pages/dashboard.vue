@@ -16,9 +16,10 @@ import {
 import { Line, Bar, Doughnut } from "vue-chartjs";
 import { useOrdersStore } from "@/stores/orders";
 import { useMenuStore } from "@/stores/menu";
-import { useRestaurantStore } from "@/stores/restaurant";
 import { useAuthStore } from "@/stores/auth";
 import { useReviewsStore } from "@/stores/reviews";
+import { useEstablishment } from "@/composables/useEstablishment";
+import { useCatalogStore } from "@/stores/catalog";
 import {
   ORDER_STATUS_LABELS,
   ORDER_TYPE_LABELS,
@@ -47,17 +48,76 @@ ChartJS.register(
 
 const ordersStore = useOrdersStore();
 const menuStore = useMenuStore();
-const restaurantStore = useRestaurantStore();
+const catalogStore = useCatalogStore();
 const authStore = useAuthStore();
 const reviewsStore = useReviewsStore();
+const est = useEstablishment();
+
+const isGrocery = computed(() => authStore.isGrocery);
+const accent = computed(() => isGrocery.value ? '#16a34a' : '#EA004B');
+const accentLight = computed(() => isGrocery.value ? '#22c55e' : '#ff4081');
+const accentBg = computed(() => isGrocery.value ? '#e8f5e9' : '#fce4ec');
+const accentRgba = (alpha: number) => isGrocery.value ? `rgba(22,163,74,${alpha})` : `rgba(234,0,75,${alpha})`;
+
+// ─── Period helpers ───
+const getDateRange = (period: 'today' | 'week' | 'month') => {
+  const now = new Date();
+  let start: Date, end: Date;
+  if (period === 'today') {
+    start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    end = new Date(start.getTime() + 86400000 - 1);
+  } else if (period === 'week') {
+    const day = now.getDay();
+    const diff = day === 0 ? 6 : day - 1;
+    start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - diff);
+    end = new Date(start.getTime() + 7 * 86400000 - 1);
+  } else {
+    start = new Date(now.getFullYear(), now.getMonth(), 1);
+    end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+  }
+  return { start, end };
+};
+
+const periodOrders = computed(() => {
+  const { start, end } = getDateRange(analyticsPeriod.value);
+  return ordersStore.orders.filter(o => {
+    const d = new Date(o.createdAt);
+    return d >= start && d <= end;
+  });
+});
+
+const prevPeriodOrders = computed(() => {
+  const { start, end } = getDateRange(analyticsPeriod.value);
+  const duration = end.getTime() - start.getTime() + 1;
+  const prevStart = new Date(start.getTime() - duration);
+  const prevEnd = new Date(start.getTime() - 1);
+  return ordersStore.orders.filter(o => {
+    const d = new Date(o.createdAt);
+    return d >= prevStart && d <= prevEnd;
+  });
+});
+
+function calcTrend(current: number, previous: number): { text: string; up: boolean } {
+  if (previous === 0 && current === 0) return { text: '—', up: true };
+  if (previous === 0) return { text: 'Новое', up: true };
+  const pct = Math.round(((current - previous) / previous) * 100);
+  return { text: (pct >= 0 ? '+' : '') + pct + '%', up: pct >= 0 };
+}
+
+const periodLabel = computed(() => {
+  if (analyticsPeriod.value === 'today') return 'сегодня';
+  if (analyticsPeriod.value === 'week') return 'за неделю';
+  return 'за месяц';
+});
 
 onMounted(async () => {
-  await Promise.all([
-    ordersStore.loadOrders(),
-    menuStore.loadMenu(),
-    restaurantStore.loadRestaurant(),
-    reviewsStore.loadReviews(),
-  ]);
+  const loads: Promise<any>[] = [est.load(), reviewsStore.loadReviews()];
+  if (isGrocery.value) {
+    loads.push(catalogStore.loadCatalog());
+  } else {
+    loads.push(ordersStore.loadOrders(), menuStore.loadMenu());
+  }
+  await Promise.all(loads);
 });
 
 // ─── Период аналитики ───
@@ -83,36 +143,35 @@ const todayDate = computed(() =>
 
 // ─── KPI карточки (6 штук) ───
 const kpiCards = computed(() => {
-  const orders = ordersStore.orders;
+  const orders = periodOrders.value;
+  const prev = prevPeriodOrders.value;
   const completed = orders.filter((o) => o.status === "completed");
+  const prevCompleted = prev.filter((o) => o.status === "completed");
   const rejected = orders.filter((o) => o.status === "rejected");
 
   const totalRevenue = completed.reduce((s, o) => s + o.totalPrice, 0);
-  const avgCheck =
-    completed.length > 0 ? Math.round(totalRevenue / completed.length) : 0;
-  const completionRate =
-    orders.length > 0
-      ? Math.round((completed.length / orders.length) * 100)
-      : 0;
-  const rejectionRate =
-    orders.length > 0 ? Math.round((rejected.length / orders.length) * 100) : 0;
+  const prevRevenue = prevCompleted.reduce((s, o) => s + o.totalPrice, 0);
+  const avgCheck = completed.length > 0 ? Math.round(totalRevenue / completed.length) : 0;
+  const prevAvgCheck = prevCompleted.length > 0 ? Math.round(prevRevenue / prevCompleted.length) : 0;
+  const completionRate = orders.length > 0 ? Math.round((completed.length / orders.length) * 100) : 0;
+  const prevCompletionRate = prev.length > 0 ? Math.round((prevCompleted.length / prev.length) * 100) : 0;
+  const rejectionRate = orders.length > 0 ? Math.round((rejected.length / orders.length) * 100) : 0;
 
-  // Среднее время приготовления (для completed заказов с acceptedAt и readyAt)
+  // Среднее время приготовления
   const withPrepTime = completed.filter((o) => o.acceptedAt && o.readyAt);
-  const avgPrepMin =
-    withPrepTime.length > 0
-      ? Math.round(
-          withPrepTime.reduce((s, o) => {
-            return (
-              s +
-              (new Date(o.readyAt!).getTime() -
-                new Date(o.acceptedAt!).getTime())
-            );
-          }, 0) /
-            withPrepTime.length /
-            60000,
-        )
-      : 0;
+  const avgPrepMin = withPrepTime.length > 0
+    ? Math.round(withPrepTime.reduce((s, o) => s + (new Date(o.readyAt!).getTime() - new Date(o.acceptedAt!).getTime()), 0) / withPrepTime.length / 60000)
+    : 0;
+  const prevWithPrep = prevCompleted.filter((o) => o.acceptedAt && o.readyAt);
+  const prevAvgPrep = prevWithPrep.length > 0
+    ? Math.round(prevWithPrep.reduce((s, o) => s + (new Date(o.readyAt!).getTime() - new Date(o.acceptedAt!).getTime()), 0) / prevWithPrep.length / 60000)
+    : 0;
+
+  const revTrend = calcTrend(totalRevenue, prevRevenue);
+  const ordTrend = calcTrend(orders.length, prev.length);
+  const avgTrend = calcTrend(avgCheck, prevAvgCheck);
+  const prepDiff = avgPrepMin - prevAvgPrep;
+  const compTrend = calcTrend(completionRate, prevCompletionRate);
 
   return [
     {
@@ -121,9 +180,9 @@ const kpiCards = computed(() => {
       icon: "mdi-cash-multiple",
       color: "#16a34a",
       bg: "#e8f5e9",
-      trend: "+12.5%",
-      trendUp: true,
-      subtitle: "vs прошлый период",
+      trend: revTrend.text,
+      trendUp: revTrend.up,
+      subtitle: `vs пред. период`,
     },
     {
       label: "Заказов",
@@ -131,18 +190,18 @@ const kpiCards = computed(() => {
       icon: "mdi-receipt-text-outline",
       color: "#F97316",
       bg: "#fff3e0",
-      trend: "+8%",
-      trendUp: true,
-      subtitle: "всего за период",
+      trend: ordTrend.text,
+      trendUp: ordTrend.up,
+      subtitle: periodLabel.value,
     },
     {
       label: "Средний чек",
       value: avgCheck.toLocaleString("ru-RU") + " ₽",
       icon: "mdi-chart-line",
-      color: "#EA004B",
-      bg: "#fce4ec",
-      trend: "+3.2%",
-      trendUp: true,
+      color: accent.value,
+      bg: accentBg.value,
+      trend: avgTrend.text,
+      trendUp: avgTrend.up,
       subtitle: "по завершённым",
     },
     {
@@ -151,8 +210,8 @@ const kpiCards = computed(() => {
       icon: "mdi-timer-outline",
       color: "#8b5cf6",
       bg: "#f3e8ff",
-      trend: "-2 мин",
-      trendUp: true,
+      trend: prevAvgPrep > 0 ? (prepDiff <= 0 ? prepDiff : '+' + prepDiff) + ' мин' : '—',
+      trendUp: prepDiff <= 0,
       subtitle: "среднее",
     },
     {
@@ -161,7 +220,7 @@ const kpiCards = computed(() => {
       icon: "mdi-check-circle-outline",
       color: "#1976d2",
       bg: "#e3f2fd",
-      trend: completionRate >= 90 ? "Отлично" : "Норма",
+      trend: compTrend.text,
       trendUp: completionRate >= 80,
       subtitle: "заказов завершено",
     },
@@ -178,57 +237,81 @@ const kpiCards = computed(() => {
   ];
 });
 
-// ─── Revenue chart (12 недель) ───
-const revenueLabels = [
-  "Нед 1",
-  "Нед 2",
-  "Нед 3",
-  "Нед 4",
-  "Нед 5",
-  "Нед 6",
-  "Нед 7",
-  "Нед 8",
-  "Нед 9",
-  "Нед 10",
-  "Нед 11",
-  "Нед 12",
-];
-const revenueChartData = computed(() => ({
-  labels: revenueLabels,
-  datasets: [
-    {
-      label: "Доход",
-      data: [
-        62000, 78000, 95000, 88000, 110000, 98000, 125000, 115000, 145000,
-        132000, 155000, 168000,
-      ],
-      borderColor: "#EA004B",
-      backgroundColor: "rgba(234,0,75,0.06)",
+// ─── Revenue chart (dynamic by period) ───
+const revenueChartData = computed(() => {
+  const completed = periodOrders.value.filter(o => o.status === 'completed');
+  const now = new Date();
+
+  if (analyticsPeriod.value === 'today') {
+    // Hourly revenue
+    const hourly = new Array(24).fill(0);
+    completed.forEach(o => {
+      hourly[new Date(o.createdAt).getHours()] += o.totalPrice;
+    });
+    return {
+      labels: Array.from({ length: 24 }, (_, i) => `${i.toString().padStart(2, '0')}:00`),
+      datasets: [{
+        label: 'Выручка',
+        data: hourly,
+        borderColor: accent.value,
+        backgroundColor: accentRgba(0.06),
+        tension: 0.4,
+        fill: true,
+        pointBackgroundColor: accent.value,
+        pointRadius: 3,
+        pointHoverRadius: 6,
+        borderWidth: 2.5,
+      }],
+    };
+  }
+
+  if (analyticsPeriod.value === 'week') {
+    // Daily revenue for current week (Mon-Sun)
+    const days = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+    const daily = new Array(7).fill(0);
+    completed.forEach(o => {
+      const d = new Date(o.createdAt).getDay();
+      daily[d === 0 ? 6 : d - 1] += o.totalPrice;
+    });
+    return {
+      labels: days,
+      datasets: [{
+        label: 'Выручка',
+        data: daily,
+        borderColor: accent.value,
+        backgroundColor: accentRgba(0.06),
+        tension: 0.4,
+        fill: true,
+        pointBackgroundColor: accent.value,
+        pointRadius: 3,
+        pointHoverRadius: 6,
+        borderWidth: 2.5,
+      }],
+    };
+  }
+
+  // Month — daily revenue
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const daily = new Array(daysInMonth).fill(0);
+  completed.forEach(o => {
+    daily[new Date(o.createdAt).getDate() - 1] += o.totalPrice;
+  });
+  return {
+    labels: daily.map((_, i) => `${i + 1}`),
+    datasets: [{
+      label: 'Выручка',
+      data: daily,
+      borderColor: accent.value,
+      backgroundColor: accentRgba(0.06),
       tension: 0.4,
       fill: true,
-      pointBackgroundColor: "#EA004B",
-      pointRadius: 3,
-      pointHoverRadius: 6,
+      pointBackgroundColor: accent.value,
+      pointRadius: 2,
+      pointHoverRadius: 5,
       borderWidth: 2.5,
-    },
-    {
-      label: "Расход",
-      data: [
-        35000, 42000, 48000, 45000, 55000, 52000, 62000, 58000, 72000, 68000,
-        78000, 82000,
-      ],
-      borderColor: "#94a3b8",
-      backgroundColor: "rgba(148,163,184,0.04)",
-      tension: 0.4,
-      fill: true,
-      pointBackgroundColor: "#94a3b8",
-      pointRadius: 3,
-      pointHoverRadius: 6,
-      borderWidth: 2,
-      borderDash: [6, 4],
-    },
-  ],
-}));
+    }],
+  };
+});
 
 const lineChartOptions = {
   responsive: true,
@@ -260,47 +343,46 @@ const lineChartOptions = {
   },
 };
 
-// Revenue summary numbers
+// Revenue summary numbers (real data)
 const revenueSummary = computed(() => {
-  const income = [
-    62000, 78000, 95000, 88000, 110000, 98000, 125000, 115000, 145000, 132000,
-    155000, 168000,
-  ];
-  const expense = [
-    35000, 42000, 48000, 45000, 55000, 52000, 62000, 58000, 72000, 68000, 78000,
-    82000,
-  ];
-  const totalIncome = income.reduce((a, b) => a + b, 0);
-  const totalExpense = expense.reduce((a, b) => a + b, 0);
+  const completed = periodOrders.value.filter(o => o.status === 'completed');
+  const totalRevenue = completed.reduce((s, o) => s + o.totalPrice, 0);
+  const avgCheck = completed.length > 0 ? Math.round(totalRevenue / completed.length) : 0;
   return {
-    income: totalIncome,
-    expense: totalExpense,
-    profit: totalIncome - totalExpense,
-    margin: Math.round(((totalIncome - totalExpense) / totalIncome) * 100),
+    revenue: totalRevenue,
+    ordersCount: periodOrders.value.length,
+    avgCheck,
   };
 });
 
 // ─── Hourly orders heatmap (peak hours) ───
-const hourlyData = [
-  0, 0, 0, 0, 0, 0, 2, 5, 12, 18, 25, 38, 45, 42, 35, 28, 22, 30, 48, 55, 42,
-  28, 15, 5,
-];
-const peakHour = hourlyData.indexOf(Math.max(...hourlyData));
+const hourlyData = computed(() => {
+  const hours = new Array(24).fill(0);
+  periodOrders.value.forEach(o => {
+    hours[new Date(o.createdAt).getHours()]++;
+  });
+  return hours;
+});
+const peakHour = computed(() => {
+  const data = hourlyData.value;
+  const max = Math.max(...data);
+  return max > 0 ? data.indexOf(max) : -1;
+});
 const hourlyChartData = computed(() => ({
-  labels: Array.from(
-    { length: 24 },
-    (_, i) => `${i.toString().padStart(2, "0")}:00`,
-  ),
+  labels: Array.from({ length: 24 }, (_, i) => `${i.toString().padStart(2, "0")}:00`),
   datasets: [
     {
       label: "Заказы",
-      data: hourlyData,
-      backgroundColor: hourlyData.map((v, i) => {
-        if (i === peakHour) return "#EA004B";
-        if (v > 40) return "rgba(234,0,75,0.6)";
-        if (v > 20) return "rgba(234,0,75,0.35)";
-        if (v > 10) return "rgba(234,0,75,0.2)";
-        return "rgba(234,0,75,0.08)";
+      data: hourlyData.value,
+      backgroundColor: hourlyData.value.map((v, i) => {
+        const max = Math.max(...hourlyData.value);
+        if (max === 0) return accentRgba(0.08);
+        if (i === peakHour.value) return accent.value;
+        const ratio = v / max;
+        if (ratio > 0.7) return accentRgba(0.6);
+        if (ratio > 0.4) return accentRgba(0.35);
+        if (ratio > 0.15) return accentRgba(0.2);
+        return accentRgba(0.08);
       }),
       borderRadius: 4,
       borderSkipped: false,
@@ -340,7 +422,7 @@ const hourlyChartOptions = {
 // ─── Doughnut: Revenue by order type ───
 const orderTypeRevenue = computed(() => {
   const rev: Record<OrderType, number> = { delivery: 0, pickup: 0, dine_in: 0 };
-  ordersStore.orders
+  periodOrders.value
     .filter((o) => o.status === "completed")
     .forEach((o) => {
       rev[o.orderType] += o.totalPrice;
@@ -387,7 +469,7 @@ const topItems = computed(() => {
     string,
     { name: string; count: number; revenue: number }
   > = {};
-  ordersStore.orders
+  periodOrders.value
     .filter((o) => o.status !== "rejected")
     .forEach((o) => {
       o.items.forEach((item) => {
@@ -407,18 +489,27 @@ const maxItemRevenue = computed(() => topItems.value[0]?.revenue ?? 1);
 
 // ─── Orders by weekday (bar chart) ───
 const weekDays = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
-const currentWeekday = new Date().getDay();
-const todayIdx = currentWeekday === 0 ? 6 : currentWeekday - 1;
-const weeklyOrderCounts = [32, 45, 58, 72, 65, 88, 41];
+const todayIdx = computed(() => {
+  const d = new Date().getDay();
+  return d === 0 ? 6 : d - 1;
+});
+const weeklyOrderCounts = computed(() => {
+  const counts = new Array(7).fill(0);
+  periodOrders.value.forEach(o => {
+    const d = new Date(o.createdAt).getDay();
+    counts[d === 0 ? 6 : d - 1]++;
+  });
+  return counts;
+});
 
 const ordersBarData = computed(() => ({
   labels: weekDays,
   datasets: [
     {
       label: "Заказы",
-      data: weeklyOrderCounts,
+      data: weeklyOrderCounts.value,
       backgroundColor: weekDays.map((_, i) =>
-        i === todayIdx ? "#EA004B" : "rgba(234,0,75,0.12)",
+        i === todayIdx.value ? accent.value : accentRgba(0.12),
       ),
       borderRadius: 6,
       borderSkipped: false,
@@ -450,7 +541,7 @@ const barChartOptions = {
 
 // ─── Order funnel (conversion pipeline) ───
 const orderFunnel = computed(() => {
-  const orders = ordersStore.orders;
+  const orders = periodOrders.value;
   const total = orders.length;
   const accepted = orders.filter(
     (o) => o.status !== "incoming" && o.status !== "rejected",
@@ -484,7 +575,7 @@ const orderFunnel = computed(() => {
     {
       label: "Отклонено",
       value: rejected,
-      color: "#EA004B",
+      color: accent.value,
       pct: total > 0 ? Math.round((rejected / total) * 100) : 0,
     },
   ];
@@ -492,6 +583,8 @@ const orderFunnel = computed(() => {
 
 // ─── Categories performance ───
 const categoryPerformance = computed(() => {
+  if (isGrocery.value) return [];
+
   const catRevenue: Record<
     number,
     { name: string; revenue: number; orders: number; items: number }
@@ -501,7 +594,7 @@ const categoryPerformance = computed(() => {
     catRevenue[c.id] = { name: c.name, revenue: 0, orders: 0, items: 0 };
   });
 
-  ordersStore.orders
+  periodOrders.value
     .filter((o) => o.status !== "rejected")
     .forEach((o) => {
       o.items.forEach((item) => {
@@ -515,7 +608,7 @@ const categoryPerformance = computed(() => {
     });
 
   // Считаем уникальные заказы на категорию
-  ordersStore.orders
+  periodOrders.value
     .filter((o) => o.status !== "rejected")
     .forEach((o) => {
       const cats = new Set<number>();
@@ -537,7 +630,10 @@ const maxCatRevenue = computed(
   () => categoryPerformance.value[0]?.revenue ?? 1,
 );
 
-const catColors = ["#EA004B", "#F97316", "#3b82f6", "#16a34a", "#8b5cf6"];
+const catColors = computed(() => isGrocery.value
+  ? ["#16a34a", "#F97316", "#3b82f6", "#8b5cf6", "#eab308"]
+  : ["#EA004B", "#F97316", "#3b82f6", "#16a34a", "#8b5cf6"],
+);
 
 // ─── Recent orders ───
 const recentOrders = computed(() =>
@@ -675,56 +771,45 @@ function reviewTimeAgo(date: string): string {
             <div>
               <p class="text-subtitle-1 font-weight-bold">Динамика выручки</p>
               <p class="text-caption text-medium-emphasis">
-                Последние 12 недель
+                {{ analyticsPeriod === 'today' ? 'Сегодня по часам' : analyticsPeriod === 'week' ? 'Текущая неделя' : 'Текущий месяц' }}
               </p>
             </div>
-            <div class="d-flex ga-4">
-              <div class="d-flex align-center ga-1">
-                <div
-                  class="rounded-circle"
-                  style="width: 8px; height: 8px; background: #ea004b"
-                />
-                <span class="text-caption text-medium-emphasis">Доход</span>
-              </div>
-              <div class="d-flex align-center ga-1">
-                <div
-                  class="rounded-circle"
-                  style="width: 8px; height: 8px; background: #94a3b8"
-                />
-                <span class="text-caption text-medium-emphasis">Расход</span>
-              </div>
+            <div class="d-flex align-center ga-1">
+              <div
+                class="rounded-circle"
+                :style="{ width: '8px', height: '8px', background: accent }"
+              />
+              <span class="text-caption text-medium-emphasis">Выручка</span>
             </div>
           </div>
 
           <!-- Summary row -->
           <v-row dense class="mb-4">
             <v-col cols="4">
-              <p class="text-caption text-medium-emphasis">Доход</p>
+              <p class="text-caption text-medium-emphasis">Выручка</p>
               <p
                 class="text-subtitle-2 font-weight-bold"
-                style="color: #ea004b"
+                :style="{ color: accent }"
               >
-                {{ revenueSummary.income.toLocaleString("ru-RU") }} ₽
+                {{ revenueSummary.revenue.toLocaleString("ru-RU") }} ₽
               </p>
             </v-col>
             <v-col cols="4">
-              <p class="text-caption text-medium-emphasis">Расход</p>
+              <p class="text-caption text-medium-emphasis">Заказов</p>
               <p
                 class="text-subtitle-2 font-weight-bold"
-                style="color: #94a3b8"
+                style="color: #F97316"
               >
-                {{ revenueSummary.expense.toLocaleString("ru-RU") }} ₽
+                {{ revenueSummary.ordersCount }}
               </p>
             </v-col>
             <v-col cols="4">
-              <p class="text-caption text-medium-emphasis">
-                Прибыль ({{ revenueSummary.margin }}%)
-              </p>
+              <p class="text-caption text-medium-emphasis">Средний чек</p>
               <p
                 class="text-subtitle-2 font-weight-bold"
-                style="color: #16a34a"
+                style="color: #8b5cf6"
               >
-                {{ revenueSummary.profit.toLocaleString("ru-RU") }} ₽
+                {{ revenueSummary.avgCheck.toLocaleString("ru-RU") }} ₽
               </p>
             </v-col>
           </v-row>
@@ -820,10 +905,10 @@ function reviewTimeAgo(date: string): string {
                 Распределение по часам
               </p>
               <p class="text-caption text-medium-emphasis">
-                Пиковые часы нагрузки
+                Пиковые часы нагрузки · {{ periodLabel }}
               </p>
             </div>
-            <v-chip size="small" color="primary" variant="tonal" label>
+            <v-chip v-if="peakHour >= 0" size="small" color="primary" variant="tonal" label>
               <v-icon start icon="mdi-fire" size="14" />
               Пик: {{ peakHour.toString().padStart(2, "0") }}:00
             </v-chip>
@@ -838,7 +923,7 @@ function reviewTimeAgo(date: string): string {
       <v-col cols="12" md="4">
         <v-card flat rounded="xl" class="pa-5 h-100">
           <p class="text-subtitle-1 font-weight-bold mb-1">Заказы по дням</p>
-          <p class="text-caption text-medium-emphasis mb-3">Текущая неделя</p>
+          <p class="text-caption text-medium-emphasis mb-3">Распределение {{ periodLabel }}</p>
 
           <div style="height: 200px">
             <Bar :data="ordersBarData" :options="barChartOptions" />
@@ -846,7 +931,7 @@ function reviewTimeAgo(date: string): string {
 
           <div class="d-flex align-center justify-space-between mt-3">
             <div>
-              <p class="text-caption text-medium-emphasis">Всего за неделю</p>
+              <p class="text-caption text-medium-emphasis">Всего {{ periodLabel }}</p>
               <p class="text-subtitle-2 font-weight-bold">
                 {{ weeklyOrderCounts.reduce((a, b) => a + b, 0) }} заказов
               </p>
@@ -854,9 +939,7 @@ function reviewTimeAgo(date: string): string {
             <div class="text-right">
               <p class="text-caption text-medium-emphasis">Среднее / день</p>
               <p class="text-subtitle-2 font-weight-bold">
-                {{
-                  Math.round(weeklyOrderCounts.reduce((a, b) => a + b, 0) / 7)
-                }}
+                {{ Math.round(weeklyOrderCounts.reduce((a, b) => a + b, 0) / 7) }}
               </p>
             </div>
           </div>
@@ -935,7 +1018,7 @@ function reviewTimeAgo(date: string): string {
                   :style="{
                     width: '22px',
                     height: '22px',
-                    backgroundColor: idx < 3 ? '#EA004B' : '#e2e8f0',
+                    backgroundColor: idx < 3 ? accent : '#e2e8f0',
                     color: idx < 3 ? '#fff' : '#64748b',
                     fontSize: '11px',
                   }"
@@ -957,7 +1040,7 @@ function reviewTimeAgo(date: string): string {
             </div>
             <v-progress-linear
               :model-value="(item.revenue / maxItemRevenue) * 100"
-              color="#EA004B"
+              :color="accent"
               rounded
               height="4"
               bg-color="rgba(0,0,0,0.04)"
@@ -1096,7 +1179,7 @@ function reviewTimeAgo(date: string): string {
         <div>
           <p class="db-reviews-title">Отзывы клиентов</p>
           <p class="db-reviews-subtitle">
-            Рейтинг {{ restaurantStore.restaurant?.rating ?? "—" }} / 5.0 ·
+            Рейтинг {{ est.data.value?.rating ?? "—" }} / 5.0 ·
             {{ reviewsStore.reviews.length }} отзывов
           </p>
         </div>
@@ -1113,10 +1196,10 @@ function reviewTimeAgo(date: string): string {
           <v-card flat rounded="xl" class="db-review-card h-100">
             <div class="db-review-card__top">
               <div class="db-review-card__author">
-                <div class="db-review-card__avatar">{{ getInitials(r.author) }}</div>
+                <div class="db-review-card__avatar">{{ getInitials(r.customerName) }}</div>
                 <div>
-                  <p class="db-review-card__name">{{ r.author }}</p>
-                  <p class="db-review-card__date">{{ reviewTimeAgo(r.date) }}</p>
+                  <p class="db-review-card__name">{{ r.customerName }}</p>
+                  <p class="db-review-card__date">{{ reviewTimeAgo(r.createdAt) }}</p>
                 </div>
               </div>
               <div class="db-review-card__badge" :style="{ background: getRatingColor(r.rating) }">
@@ -1126,15 +1209,6 @@ function reviewTimeAgo(date: string): string {
             </div>
 
             <p class="db-review-card__text">"{{ r.text }}"</p>
-
-            <div class="db-review-card__items">
-              <span v-for="item in r.items.slice(0, 2)" :key="item" class="db-review-card__tag">
-                {{ item }}
-              </span>
-              <span v-if="r.items.length > 2" class="db-review-card__tag">
-                +{{ r.items.length - 2 }}
-              </span>
-            </div>
 
             <div v-if="r.reply" class="db-review-card__reply">
               <v-icon icon="mdi-reply" size="12" color="#EA004B" />

@@ -2,21 +2,34 @@
 import { useOrdersStore } from "@/stores/orders";
 import { useMenuStore } from "@/stores/menu";
 import { useRestaurantStore } from "@/stores/restaurant";
+import { useGroceryStoreStore } from "@/stores/groceryStore";
+import { useCatalogStore } from "@/stores/catalog";
 import { useAuthStore } from "@/stores/auth";
 import { WEEKDAY_LABELS, type WeekDay } from "@/types";
 
 const ordersStore = useOrdersStore();
 const menuStore = useMenuStore();
 const restaurantStore = useRestaurantStore();
+const groceryStoreStore = useGroceryStoreStore();
+const catalogStore = useCatalogStore();
 const authStore = useAuthStore();
 const router = useRouter();
 
+const isGrocery = computed(() => authStore.isGrocery);
+
 onMounted(async () => {
-  await Promise.all([
-    ordersStore.loadOrders(),
-    menuStore.loadMenu(),
-    restaurantStore.loadRestaurant(),
-  ]);
+  if (isGrocery.value) {
+    await Promise.all([
+      groceryStoreStore.loadStore(),
+      catalogStore.loadCatalog(),
+    ]);
+  } else {
+    await Promise.all([
+      ordersStore.loadOrders(),
+      menuStore.loadMenu(),
+      restaurantStore.loadRestaurant(),
+    ]);
+  }
 });
 
 // Greeting
@@ -28,9 +41,39 @@ const greeting = computed(() => {
   return `Добрый вечер, ${name}!`;
 });
 
+// Establishment data (unified)
+const establishment = computed(() => {
+  if (isGrocery.value) {
+    const s = groceryStoreStore.store;
+    return {
+      name: s?.name ?? "Магазин",
+      address: s?.address,
+      imageUrl: s?.imageUrl,
+      logo: s?.logo,
+      isOpen: s?.isOpen ?? false,
+      rating: s?.rating,
+      reviewsCount: s?.reviewsCount ?? 0,
+      deliveryTime: s?.deliveryTime,
+      workingHours: s?.workingHours,
+    };
+  }
+  const r = restaurantStore.restaurant;
+  return {
+    name: r?.name ?? "Ресторан",
+    address: r?.address,
+    imageUrl: r?.imageUrl,
+    logo: r?.logo,
+    isOpen: r?.isOpen ?? false,
+    rating: r?.rating,
+    reviewsCount: r?.reviewsCount ?? 0,
+    deliveryTime: r?.deliveryTime,
+    workingHours: r?.workingHours,
+  };
+});
+
 // Today's working hours
 const todaySchedule = computed(() => {
-  if (!restaurantStore.restaurant?.workingHours) return null;
+  if (!establishment.value.workingHours) return null;
   const days: WeekDay[] = [
     "sunday",
     "monday",
@@ -41,7 +84,7 @@ const todaySchedule = computed(() => {
     "saturday",
   ];
   const today = days[new Date().getDay()]!;
-  const schedule = restaurantStore.restaurant.workingHours[today];
+  const schedule = (establishment.value.workingHours as any)[today];
   if (!schedule) return null;
   return {
     day: WEEKDAY_LABELS[today],
@@ -49,148 +92,282 @@ const todaySchedule = computed(() => {
   };
 });
 
+// Catalog/menu item counts
+const itemsCount = computed(() => {
+  if (isGrocery.value) {
+    const available = catalogStore.products.filter((p) => p.available).length;
+    return { available, total: catalogStore.products.length };
+  }
+  const available = menuStore.items.filter((i) => i.available).length;
+  return { available, total: menuStore.items.length };
+});
+
 // Summary stats
-const summaryStats = computed(() => [
-  {
-    label: "Заказов сегодня",
-    value: ordersStore.todayOrdersCount,
-    icon: "mdi-receipt-text-outline",
-    color: "#F97316",
-    bg: "#fff3e0",
-  },
-  {
-    label: "Выручка",
-    value: ordersStore.todayRevenue.toLocaleString("ru-RU") + " ₽",
-    icon: "mdi-cash-multiple",
-    color: "#16a34a",
-    bg: "#e8f5e9",
-  },
-  {
-    label: "Активных заказов",
-    value:
-      ordersStore.incomingOrders.length +
-      ordersStore.preparingOrders.length +
-      ordersStore.readyOrders.length,
-    icon: "mdi-progress-clock",
-    color: "#1976d2",
-    bg: "#e3f2fd",
-  },
-  {
-    label: "Позиций в меню",
-    value:
-      menuStore.items.filter((i) => i.available).length +
-      " / " +
-      menuStore.items.length,
-    icon: "mdi-food",
-    color: "#EA004B",
-    bg: "#fce4ec",
-  },
-]);
+const summaryStats = computed(() => {
+  if (isGrocery.value) {
+    return [
+      {
+        label: "Товаров в каталоге",
+        value: itemsCount.value.available + " / " + itemsCount.value.total,
+        icon: "mdi-package-variant",
+        color: "#16a34a",
+        bg: "#e8f5e9",
+      },
+      {
+        label: "Категорий",
+        value: catalogStore.categories.length,
+        icon: "mdi-shape",
+        color: "#8b5cf6",
+        bg: "#f3e8ff",
+      },
+      {
+        label: "Недоступных товаров",
+        value: catalogStore.products.filter((p) => !p.available).length,
+        icon: "mdi-cancel",
+        color: "#F97316",
+        bg: "#fff3e0",
+      },
+      {
+        label: "Рейтинг",
+        value: establishment.value.rating ?? "—",
+        icon: "mdi-star",
+        color: "#eab308",
+        bg: "#fef9c3",
+      },
+    ];
+  }
+  return [
+    {
+      label: "Заказов сегодня",
+      value: ordersStore.todayOrdersCount,
+      icon: "mdi-receipt-text-outline",
+      color: "#F97316",
+      bg: "#fff3e0",
+    },
+    {
+      label: "Выручка",
+      value: ordersStore.todayRevenue.toLocaleString("ru-RU") + " ₽",
+      icon: "mdi-cash-multiple",
+      color: "#16a34a",
+      bg: "#e8f5e9",
+    },
+    {
+      label: "Активных заказов",
+      value:
+        ordersStore.incomingOrders.length +
+        ordersStore.preparingOrders.length +
+        ordersStore.readyOrders.length,
+      icon: "mdi-progress-clock",
+      color: "#1976d2",
+      bg: "#e3f2fd",
+    },
+    {
+      label: "Позиций в меню",
+      value: itemsCount.value.available + " / " + itemsCount.value.total,
+      icon: "mdi-food",
+      color: "#EA004B",
+      bg: "#fce4ec",
+    },
+  ];
+});
 
 // Quick actions
-const quickActions = [
-  {
-    label: "Новые заказы",
-    description: "Просмотреть и принять",
-    icon: "mdi-bell-ring-outline",
-    color: "#F97316",
-    bg: "#fff3e0",
-    to: "/orders",
-    badge: computed(() => ordersStore.incomingCount),
-  },
-  {
-    label: "Добавить позицию",
-    description: "Новое блюдо в меню",
-    icon: "mdi-plus-circle-outline",
-    color: "#16a34a",
-    bg: "#e8f5e9",
-    to: "/menu",
-    badge: null,
-  },
-  {
-    label: "Стоп-лист",
-    description: "Выключить позиции",
-    icon: "mdi-cancel",
-    color: "#EA004B",
-    bg: "#fce4ec",
-    to: "/menu",
-    badge: computed(() => menuStore.items.filter((i) => !i.available).length),
-  },
-  {
-    label: "Настройки",
-    description: "Часы, доставка, профиль",
-    icon: "mdi-cog-outline",
-    color: "#64748b",
-    bg: "#f1f5f9",
-    to: "/settings",
-    badge: null,
-  },
-];
+const quickActions = computed(() => {
+  if (isGrocery.value) {
+    return [
+      {
+        label: "Каталог",
+        description: "Управление товарами",
+        icon: "mdi-package-variant",
+        color: "#16a34a",
+        bg: "#e8f5e9",
+        to: "/catalog",
+        badge: null,
+      },
+      {
+        label: "Стоп-лист",
+        description: "Недоступные товары",
+        icon: "mdi-cancel",
+        color: "#F97316",
+        bg: "#fff3e0",
+        to: "/catalog",
+        badge: computed(() => catalogStore.products.filter((p) => !p.available).length),
+      },
+      {
+        label: "Настройки",
+        description: "Часы, доставка, профиль",
+        icon: "mdi-cog-outline",
+        color: "#64748b",
+        bg: "#f1f5f9",
+        to: "/settings",
+        badge: null,
+      },
+    ];
+  }
+  return [
+    {
+      label: "Новые заказы",
+      description: "Просмотреть и принять",
+      icon: "mdi-bell-ring-outline",
+      color: "#F97316",
+      bg: "#fff3e0",
+      to: "/orders",
+      badge: computed(() => ordersStore.incomingCount),
+    },
+    {
+      label: "Добавить позицию",
+      description: "Новое блюдо в меню",
+      icon: "mdi-plus-circle-outline",
+      color: "#16a34a",
+      bg: "#e8f5e9",
+      to: "/menu",
+      badge: null,
+    },
+    {
+      label: "Стоп-лист",
+      description: "Выключить позиции",
+      icon: "mdi-cancel",
+      color: "#EA004B",
+      bg: "#fce4ec",
+      to: "/menu",
+      badge: computed(() => menuStore.items.filter((i) => !i.available).length),
+    },
+    {
+      label: "Настройки",
+      description: "Часы, доставка, профиль",
+      icon: "mdi-cog-outline",
+      color: "#64748b",
+      bg: "#f1f5f9",
+      to: "/settings",
+      badge: null,
+    },
+  ];
+});
 
 // Navigation sections
-const sections = [
-  {
-    title: "Дашборд",
-    description:
-      "Аналитика, графики выручки, статистика заказов и обзор категорий",
-    icon: "mdi-view-dashboard",
-    color: "#8b5cf6",
-    bg: "#f3e8ff",
-    to: "/dashboard",
-    stat: "Графики и метрики",
-  },
-  {
-    title: "Заказы",
-    description:
-      "Управление заказами — приём, отклонение, отслеживание статусов",
-    icon: "mdi-receipt-text",
-    color: "#F97316",
-    bg: "#fff3e0",
-    to: "/orders",
-    stat: computed(() => `${ordersStore.orders.length} всего`),
-  },
-  {
-    title: "Меню",
-    description: "Позиции, категории, модификаторы, цены и стоп-лист",
-    icon: "mdi-food",
-    color: "#EA004B",
-    bg: "#fce4ec",
-    to: "/menu",
-    stat: computed(() => `${menuStore.items.length} позиций`),
-  },
-  {
-    title: "Отзывы",
-    description: "Отзывы клиентов, рейтинг заведения и обратная связь",
-    icon: "mdi-star",
-    color: "#eab308",
-    bg: "#fef9c3",
-    to: "/reviews",
-    stat: computed(
-      () => `${restaurantStore.restaurant?.rating ?? "—"} рейтинг`,
-    ),
-  },
-  {
-    title: "Уведомления",
-    description: "Оповещения о заказах, отзывах и системных событиях",
-    icon: "mdi-bell",
-    color: "#1976d2",
-    bg: "#e3f2fd",
-    to: "/notifications",
-    stat: "Все оповещения",
-  },
-  {
-    title: "Настройки",
-    description: "Профиль, рабочие часы, доставка, статус заведения",
-    icon: "mdi-cog",
-    color: "#64748b",
-    bg: "#f1f5f9",
-    to: "/settings",
-    stat: "Профиль заведения",
-  },
-];
+const sections = computed(() => {
+  if (isGrocery.value) {
+    return [
+      {
+        title: "Дашборд",
+        description: "Аналитика, статистика товаров и категорий",
+        icon: "mdi-view-dashboard",
+        color: "#8b5cf6",
+        bg: "#f3e8ff",
+        to: "/dashboard",
+        stat: "Графики и метрики",
+      },
+      {
+        title: "Заказы",
+        description: "Управление заказами магазина",
+        icon: "mdi-receipt-text",
+        color: "#F97316",
+        bg: "#fff3e0",
+        to: "/orders",
+        stat: "Скоро",
+      },
+      {
+        title: "Каталог",
+        description: "Товары, категории, цены и стоп-лист",
+        icon: "mdi-package-variant",
+        color: "#16a34a",
+        bg: "#e8f5e9",
+        to: "/catalog",
+        stat: `${catalogStore.products.length} товаров`,
+      },
+      {
+        title: "Отзывы",
+        description: "Отзывы клиентов, рейтинг магазина",
+        icon: "mdi-star",
+        color: "#eab308",
+        bg: "#fef9c3",
+        to: "/reviews",
+        stat: `${establishment.value.rating ?? "—"} рейтинг`,
+      },
+      {
+        title: "Уведомления",
+        description: "Оповещения о заказах, отзывах и событиях",
+        icon: "mdi-bell",
+        color: "#1976d2",
+        bg: "#e3f2fd",
+        to: "/notifications",
+        stat: "Все оповещения",
+      },
+      {
+        title: "Настройки",
+        description: "Профиль, рабочие часы, доставка, статус",
+        icon: "mdi-cog",
+        color: "#64748b",
+        bg: "#f1f5f9",
+        to: "/settings",
+        stat: "Профиль магазина",
+      },
+    ];
+  }
+  return [
+    {
+      title: "Дашборд",
+      description: "Аналитика, графики выручки, статистика заказов",
+      icon: "mdi-view-dashboard",
+      color: "#8b5cf6",
+      bg: "#f3e8ff",
+      to: "/dashboard",
+      stat: "Графики и метрики",
+    },
+    {
+      title: "Заказы",
+      description: "Управление заказами — приём, отклонение, статусы",
+      icon: "mdi-receipt-text",
+      color: "#F97316",
+      bg: "#fff3e0",
+      to: "/orders",
+      stat: computed(() => `${ordersStore.orders.length} всего`),
+    },
+    {
+      title: "Меню",
+      description: "Позиции, категории, модификаторы, цены",
+      icon: "mdi-food",
+      color: "#EA004B",
+      bg: "#fce4ec",
+      to: "/menu",
+      stat: computed(() => `${menuStore.items.length} позиций`),
+    },
+    {
+      title: "Отзывы",
+      description: "Отзывы клиентов, рейтинг заведения",
+      icon: "mdi-star",
+      color: "#eab308",
+      bg: "#fef9c3",
+      to: "/reviews",
+      stat: computed(
+        () => `${establishment.value.rating ?? "—"} рейтинг`,
+      ),
+    },
+    {
+      title: "Уведомления",
+      description: "Оповещения о заказах, отзывах и событиях",
+      icon: "mdi-bell",
+      color: "#1976d2",
+      bg: "#e3f2fd",
+      to: "/notifications",
+      stat: "Все оповещения",
+    },
+    {
+      title: "Настройки",
+      description: "Профиль, рабочие часы, доставка, статус",
+      icon: "mdi-cog",
+      color: "#64748b",
+      bg: "#f1f5f9",
+      to: "/settings",
+      stat: "Профиль заведения",
+    },
+  ];
+});
 
-// Recent activity feed (mock)
+// Recent activity feed
 const recentActivity = computed(() => {
+  if (isGrocery.value) return [];
+
   const activities: {
     icon: string;
     color: string;
@@ -252,13 +429,17 @@ const recentActivity = computed(() => {
 });
 
 const toggleOpen = () => {
-  restaurantStore.toggleOpen();
+  if (isGrocery.value) {
+    groceryStoreStore.toggleOpen();
+  } else {
+    restaurantStore.toggleOpen();
+  }
 };
 </script>
 
 <template>
   <div class="px-8 py-6">
-    <!-- Greeting + Restaurant Card -->
+    <!-- Greeting + Establishment Card -->
     <div class="mb-5">
       <h2 class="text-h5 font-weight-bold">{{ greeting }}</h2>
       <p class="text-body-2 text-medium-emphasis mt-1">
@@ -266,14 +447,14 @@ const toggleOpen = () => {
       </p>
     </div>
     <v-row dense class="mb-6">
-      <!-- Restaurant status card -->
+      <!-- Establishment status card -->
       <v-col cols="12" md="6">
         <v-card flat rounded="xl" class="h-100 overflow-hidden">
           <!-- Cover -->
           <div class="restaurant-cover">
             <v-img
-              v-if="restaurantStore.restaurant?.imageUrl"
-              :src="restaurantStore.restaurant.imageUrl"
+              v-if="establishment.imageUrl"
+              :src="establishment.imageUrl"
               height="120" cover
             />
             <div v-else class="restaurant-cover__placeholder" />
@@ -283,15 +464,15 @@ const toggleOpen = () => {
             <!-- Logo + Name -->
             <div class="d-flex align-center ga-3 mb-4" style="margin-top: -28px; position: relative; z-index: 1">
               <v-avatar size="56" color="grey-lighten-3" class="restaurant-logo-avatar">
-                <v-img v-if="restaurantStore.restaurant?.logo" :src="restaurantStore.restaurant.logo" />
+                <v-img v-if="establishment.logo" :src="establishment.logo" />
                 <v-icon v-else icon="mdi-store" size="28" color="grey" />
               </v-avatar>
               <div style="padding-top: 28px">
                 <p class="text-subtitle-2 font-weight-bold">
-                  {{ restaurantStore.restaurant?.name ?? "Ресторан" }}
+                  {{ establishment.name }}
                 </p>
                 <p class="text-caption text-medium-emphasis">
-                  {{ restaurantStore.restaurant?.address }}
+                  {{ establishment.address }}
                 </p>
               </div>
             </div>
@@ -299,11 +480,9 @@ const toggleOpen = () => {
           <div class="d-flex align-center justify-space-between mb-3">
             <span class="text-body-2">Статус</span>
             <v-switch
-              :model-value="restaurantStore.restaurant?.isOpen ?? false"
-              :label="
-                restaurantStore.restaurant?.isOpen ? 'Открыто' : 'Закрыто'
-              "
-              :color="restaurantStore.restaurant?.isOpen ? 'success' : 'error'"
+              :model-value="establishment.isOpen"
+              :label="establishment.isOpen ? 'Открыто' : 'Закрыто'"
+              :color="establishment.isOpen ? 'success' : 'error'"
               density="compact"
               hide-details
               inset
@@ -333,9 +512,9 @@ const toggleOpen = () => {
               <span class="text-body-2 text-medium-emphasis">Рейтинг</span>
             </div>
             <span class="text-body-2 font-weight-medium">
-              {{ restaurantStore.restaurant?.rating ?? "—" }}
+              {{ establishment.rating ?? "—" }}
               <span class="text-caption text-medium-emphasis">
-                ({{ restaurantStore.restaurant?.reviewsCount ?? 0 }} отзывов)
+                ({{ establishment.reviewsCount }} отзывов)
               </span>
             </span>
           </div>
@@ -346,7 +525,7 @@ const toggleOpen = () => {
               <span class="text-body-2 text-medium-emphasis">Доставка</span>
             </div>
             <span class="text-body-2 font-weight-medium">
-              {{ restaurantStore.restaurant?.deliveryTime ?? "—" }} мин
+              {{ establishment.deliveryTime ?? "—" }} мин
             </span>
           </div>
           </div>
@@ -438,7 +617,7 @@ const toggleOpen = () => {
     <!-- Quick Actions -->
     <v-row dense class="mb-6" align="start">
       <!-- Recent activity -->
-      <v-col cols="12" md="6">
+      <v-col v-if="!isGrocery" cols="12" md="6">
         <p class="text-subtitle-1 font-weight-bold mb-3">Последние события</p>
         <v-card flat rounded="xl" class="pa-4">
           <div v-if="recentActivity.length === 0" class="text-center py-8">
@@ -483,7 +662,7 @@ const toggleOpen = () => {
         </v-card>
       </v-col>
 
-      <v-col cols="12" md="6">
+      <v-col cols="12" :md="isGrocery ? 12 : 6">
         <p class="text-subtitle-1 font-weight-bold mb-3">Быстрые действия</p>
         <v-card
           v-for="a in quickActions"
