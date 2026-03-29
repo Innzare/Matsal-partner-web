@@ -70,6 +70,11 @@ export const useReviewsStore = defineStore('reviews', () => {
 
   const recentReviews = computed(() => sortedReviews.value.slice(0, 3))
 
+  const $reset = () => {
+    reviews.value = []
+    isLoading.value = false
+  }
+
   return {
     reviews,
     isLoading,
@@ -81,5 +86,6 @@ export const useReviewsStore = defineStore('reviews', () => {
     repliedCount,
     unrepliedCount,
     recentReviews,
+    $reset,
   }
 })

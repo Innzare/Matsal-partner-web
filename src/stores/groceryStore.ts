@@ -52,6 +52,12 @@ export const useGroceryStoreStore = defineStore('groceryStore', () => {
     await updateStore({ isOpen: !store.value.isOpen })
   }
 
+  const $reset = () => {
+    store.value = null
+    isLoading.value = false
+    isSaving.value = false
+  }
+
   return {
     store,
     isLoading,
@@ -61,5 +67,6 @@ export const useGroceryStoreStore = defineStore('groceryStore', () => {
     uploadImage,
     deleteImage,
     toggleOpen,
+    $reset,
   }
 })

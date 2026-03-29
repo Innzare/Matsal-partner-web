@@ -160,6 +160,15 @@ export const useMenuStore = defineStore('menu', () => {
     return updated
   }
 
+  const $reset = () => {
+    items.value = []
+    categories.value = []
+    modifierGroups.value = []
+    selectedCategory.value = null
+    isLoading.value = false
+    searchQuery.value = ''
+  }
+
   return {
     items,
     categories,
@@ -186,5 +195,6 @@ export const useMenuStore = defineStore('menu', () => {
     deleteModifierGroup,
     uploadItemImage,
     deleteItemImage,
+    $reset,
   }
 })

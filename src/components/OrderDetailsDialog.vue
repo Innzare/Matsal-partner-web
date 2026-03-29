@@ -17,7 +17,6 @@ const emit = defineEmits<{
   accept: [id: string]
   reject: [id: string]
   ready: [id: string]
-  pickedUp: [id: string]
 }>()
 
 function close() {
@@ -220,6 +219,12 @@ const steps = computed(() => {
           </div>
         </div>
 
+        <!-- Courier status -->
+        <div v-if="order.status !== 'incoming' && order.status !== 'completed' && order.status !== 'rejected'" class="od-courier" :class="order.hasCourier ? 'od-courier--found' : 'od-courier--waiting'">
+          <v-icon :icon="order.hasCourier ? 'mdi-moped' : 'mdi-clock-outline'" size="18" />
+          <span>{{ order.hasCourier ? 'Курьер назначен' : 'Ожидание курьера' }}</span>
+        </div>
+
         <!-- Timeline -->
         <div class="od-section od-section--last">
           <p class="od-section__title">
@@ -279,12 +284,11 @@ const steps = computed(() => {
           </button>
         </template>
 
-        <!-- Ready: Picked up -->
+        <!-- Ready: Waiting for courier pickup -->
         <template v-if="order.status === 'ready'">
-          <button class="od-btn od-btn--pickup" :disabled="loading" @click="emit('pickedUp', order.id)">
-            <v-progress-circular v-if="loading" indeterminate size="16" width="2" color="white" />
-            <v-icon v-else icon="mdi-check-all" size="16" />
-            Курьер забрал
+          <button class="od-btn od-btn--waiting" disabled>
+            <v-icon icon="mdi-clock-outline" size="16" />
+            Ожидание забора курьером...
           </button>
         </template>
       </div>
@@ -597,6 +601,30 @@ const steps = computed(() => {
   color: #991b1b;
 }
 
+/* ── Courier status ── */
+.od-courier {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 24px 4px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.od-courier--found {
+  background: #f0fdf4;
+  color: #16a34a;
+  border: 1px solid #bbf7d0;
+}
+
+.od-courier--waiting {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
 /* ── Footer ── */
 .od-footer {
   display: flex;
@@ -654,6 +682,11 @@ const steps = computed(() => {
 
 .od-btn--pickup:hover {
   background: #c00040;
+}
+
+.od-btn--waiting {
+  background: #f3f4f6;
+  color: #9ca3af;
 }
 
 .od-btn:disabled {
@@ -736,6 +769,21 @@ const steps = computed(() => {
 
 .dark .od-footer {
   border-top-color: #2e2e42;
+}
+
+.dark .od-courier--found {
+  background: rgba(22, 163, 74, 0.12);
+  border-color: rgba(22, 163, 74, 0.25);
+}
+
+.dark .od-courier--waiting {
+  background: rgba(220, 38, 38, 0.12);
+  border-color: rgba(220, 38, 38, 0.25);
+}
+
+.dark .od-btn--waiting {
+  background: #252538;
+  color: #6b7280;
 }
 
 .dark .od-btn--reject {

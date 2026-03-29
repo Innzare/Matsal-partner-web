@@ -2,6 +2,8 @@ import { computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useRestaurantStore } from '@/stores/restaurant'
 import { useGroceryStoreStore } from '@/stores/groceryStore'
+import { api } from '@/api'
+import type { EstablishmentAddress } from '@/types'
 
 /**
  * Composable для унифицированного доступа к данным заведения (ресторан или магазин).
@@ -69,6 +71,28 @@ export function useEstablishment() {
   const label = computed(() => (isGrocery.value ? 'магазин' : 'ресторан'))
   const labelCapitalized = computed(() => (isGrocery.value ? 'Магазин' : 'Ресторан'))
 
+  // ===== Адреса филиалов =====
+
+  const addressPrefix = computed(() =>
+    isGrocery.value ? '/auth/grocery-store/addresses' : '/auth/restaurant/addresses',
+  )
+
+  async function getAddresses() {
+    return api.get<EstablishmentAddress[]>(addressPrefix.value)
+  }
+
+  async function addAddress(data: { address: string; lat: number; lon: number }) {
+    return api.post<EstablishmentAddress>(addressPrefix.value, data)
+  }
+
+  async function updateAddress(id: string, data: { address?: string; lat?: number; lon?: number }) {
+    return api.patch<EstablishmentAddress>(`${addressPrefix.value}/${id}`, data)
+  }
+
+  async function deleteAddress(id: string) {
+    return api.delete(`${addressPrefix.value}/${id}`)
+  }
+
   return {
     isGrocery,
     data,
@@ -81,5 +105,9 @@ export function useEstablishment() {
     toggleOpen,
     label,
     labelCapitalized,
+    getAddresses,
+    addAddress,
+    updateAddress,
+    deleteAddress,
   }
 }

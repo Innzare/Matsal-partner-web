@@ -23,6 +23,7 @@ declare module 'vue' {
     ProductDialog: typeof import('./components/ProductDialog.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    SettingsAddresses: typeof import('./components/settings/SettingsAddresses.vue')['default']
     SettingsDelivery: typeof import('./components/settings/SettingsDelivery.vue')['default']
     SettingsNotifications: typeof import('./components/settings/SettingsNotifications.vue')['default']
     SettingsProfile: typeof import('./components/settings/SettingsProfile.vue')['default']

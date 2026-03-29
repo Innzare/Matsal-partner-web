@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useEstablishment } from '@/composables/useEstablishment'
 import SettingsProfile from '@/components/settings/SettingsProfile.vue'
+import SettingsAddresses from '@/components/settings/SettingsAddresses.vue'
 import SettingsDelivery from '@/components/settings/SettingsDelivery.vue'
 import SettingsSchedule from '@/components/settings/SettingsSchedule.vue'
 import SettingsNotifications from '@/components/settings/SettingsNotifications.vue'
@@ -16,6 +17,7 @@ const snackbarColor = ref('green')
 
 const tabs = [
   { icon: 'mdi-store', label: 'Профиль' },
+  { icon: 'mdi-map-marker-multiple', label: 'Адреса' },
   { icon: 'mdi-truck-delivery', label: 'Доставка' },
   { icon: 'mdi-clock-outline', label: 'Расписание' },
   { icon: 'mdi-bell-outline', label: 'Уведомления' },
@@ -85,10 +87,11 @@ async function toggleOpen() {
         <!-- Content area -->
         <div class="settings-content">
           <SettingsProfile v-if="activeTab === 0" @save="showSnack" />
-          <SettingsDelivery v-if="activeTab === 1" @save="showSnack" />
-          <SettingsSchedule v-if="activeTab === 2" @save="showSnack" />
-          <SettingsNotifications v-if="activeTab === 3" @save="showSnack" />
-          <SettingsSecurity v-if="activeTab === 4" @save="showSnack" />
+          <SettingsAddresses v-if="activeTab === 1" @save="showSnack" />
+          <SettingsDelivery v-if="activeTab === 2" @save="showSnack" />
+          <SettingsSchedule v-if="activeTab === 3" @save="showSnack" />
+          <SettingsNotifications v-if="activeTab === 4" @save="showSnack" />
+          <SettingsSecurity v-if="activeTab === 5" @save="showSnack" />
         </div>
       </div>
     </template>

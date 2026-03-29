@@ -55,6 +55,12 @@ export const useStaffStore = defineStore('staff', () => {
     invites.value = invites.value.filter(i => i.id !== id)
   }
 
+  const $reset = () => {
+    staff.value = []
+    invites.value = []
+    isLoading.value = false
+  }
+
   return {
     staff,
     invites,
@@ -65,5 +71,6 @@ export const useStaffStore = defineStore('staff', () => {
     loadInvites,
     sendInvite,
     cancelInvite,
+    $reset,
   }
 })

@@ -49,6 +49,7 @@ function transformOrder(raw: any): PartnerOrder {
     itemsCount: items.reduce((sum, i) => sum + i.quantity, 0),
     totalPrice: raw.total,
     deliveryFee: raw.deliveryPrice || 0,
+    hasCourier: !!raw.courierId,
     createdAt: raw.createdAt,
     acceptedAt: raw.confirmedAt || undefined,
     readyAt: raw.readyAt || undefined,
@@ -193,23 +194,7 @@ export const useOrdersStore = defineStore('orders', () => {
     }
   }
 
-  const markPickedUp = async (id: string) => {
-    if (IS_MOCK) {
-      const order = orders.value.find(o => o.id === id)
-      if (order && order.status === 'ready') {
-        order.status = 'completed'
-        order.completedAt = new Date().toISOString()
-      }
-      return
-    }
-
-    await api.patch(`${ordersPrefix.value}/${id}/status`, { status: 'DELIVERING' })
-    const order = orders.value.find(o => o.id === id)
-    if (order) {
-      order.status = 'completed'
-      order.completedAt = new Date().toISOString()
-    }
-  }
+  // markPickedUp removed — READY → DELIVERING теперь ответственность курьера
 
   /** Добавить новый заказ из WebSocket (order:new) */
   const addOrder = (raw: any) => {
@@ -238,6 +223,14 @@ export const useOrdersStore = defineStore('orders', () => {
     }
   }
 
+  const $reset = () => {
+    orders.value = []
+    selectedOrder.value = null
+    isLoading.value = false
+    statusFilter.value = 'all'
+    searchQuery.value = ''
+  }
+
   return {
     orders,
     selectedOrder,
@@ -257,8 +250,8 @@ export const useOrdersStore = defineStore('orders', () => {
     acceptOrder,
     rejectOrder,
     markReady,
-    markPickedUp,
     addOrder,
+    $reset,
     updateOrderFromSocket,
     cancelOrderFromSocket,
   }

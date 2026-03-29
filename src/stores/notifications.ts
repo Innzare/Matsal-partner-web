@@ -73,6 +73,11 @@ export const useNotificationsStore = defineStore('notifications', () => {
     }
   }
 
+  const $reset = () => {
+    notifications.value = []
+    isLoading.value = false
+  }
+
   return {
     notifications,
     isLoading,
@@ -86,5 +91,6 @@ export const useNotificationsStore = defineStore('notifications', () => {
     markAllAsRead,
     remove,
     clearAll,
+    $reset,
   }
 })

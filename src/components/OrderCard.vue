@@ -11,7 +11,6 @@ const emit = defineEmits<{
   accept: [id: string]
   reject: [id: string]
   ready: [id: string]
-  pickedUp: [id: string]
 }>()
 
 function timeAgo(date: string): string {
@@ -86,15 +85,14 @@ function timeAgo(date: string): string {
 
     <v-card-actions v-else-if="order.status === 'ready'" class="pt-0 px-4 pb-3">
       <v-btn
-        color="primary"
-        variant="flat"
+        variant="tonal"
         size="small"
         rounded="lg"
         block
-        :loading="loading"
-        @click.stop="emit('pickedUp', order.id)"
+        disabled
+        prepend-icon="mdi-clock-outline"
       >
-        Курьер забрал
+        Ожидание забора курьером
       </v-btn>
     </v-card-actions>
   </v-card>

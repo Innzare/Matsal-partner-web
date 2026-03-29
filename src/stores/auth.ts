@@ -1,5 +1,13 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { useRestaurantStore } from './restaurant'
+import { useGroceryStoreStore } from './groceryStore'
+import { useOrdersStore } from './orders'
+import { useMenuStore } from './menu'
+import { useCatalogStore } from './catalog'
+import { useReviewsStore } from './reviews'
+import { useStaffStore } from './staff'
+import { useNotificationsStore } from './notifications'
 
 interface User {
   id: string
@@ -127,6 +135,16 @@ export const useAuthStore = defineStore('auth', () => {
       localStorage.removeItem('refreshToken')
       localStorage.removeItem('user')
       localStorage.removeItem('establishmentType')
+
+      // Сброс всех сторов
+      useRestaurantStore().$reset()
+      useGroceryStoreStore().$reset()
+      useOrdersStore().$reset()
+      useMenuStore().$reset()
+      useCatalogStore().$reset()
+      useReviewsStore().$reset()
+      useStaffStore().$reset()
+      useNotificationsStore().$reset()
 
       const { default: router } = await import('@/router')
       router.push('/login')

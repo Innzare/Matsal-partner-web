@@ -319,18 +319,7 @@ const markReady = async (id: string) => {
   }
 }
 
-const markPickedUp = async (id: string) => {
-  actionLoading.value = true
-  try {
-    await ordersStore.markPickedUp(id)
-    showSnack('Заказ передан курьеру')
-    detailsDialog.value = false
-  } catch (e: any) {
-    showSnack(e.message || 'Ошибка при смене статуса', 'red')
-  } finally {
-    actionLoading.value = false
-  }
-}
+// markPickedUp removed — READY → DELIVERING теперь ответственность курьера
 
 function formatDate(date: string): string {
   const d = new Date(date)
@@ -540,9 +529,16 @@ const statusFilterCounts = computed(() => ({
         </template>
 
         <template #item.status="{ item }">
-          <div class="ot-status" :class="'ot-status--' + item.status">
-            <span class="ot-status__dot" />
-            {{ ORDER_STATUS_LABELS[item.status] }}
+          <div class="d-flex align-center ga-2">
+            <div class="ot-status" :class="'ot-status--' + item.status">
+              <span class="ot-status__dot" />
+              {{ ORDER_STATUS_LABELS[item.status] }}
+            </div>
+            <v-tooltip v-if="item.status !== 'incoming' && item.status !== 'completed' && item.status !== 'rejected'" :text="item.hasCourier ? 'Курьер назначен' : 'Ожидание курьера'" location="top">
+              <template #activator="{ props }">
+                <v-icon v-bind="props" :icon="item.hasCourier ? 'mdi-moped' : 'mdi-clock-outline'" size="16" :color="item.hasCourier ? '#16a34a' : '#dc2626'" />
+              </template>
+            </v-tooltip>
           </div>
         </template>
       </v-data-table>
@@ -556,7 +552,6 @@ const statusFilterCounts = computed(() => ({
       @accept="acceptOrder"
       @reject="openRejectDialog"
       @ready="markReady"
-      @picked-up="markPickedUp"
     />
 
     <!-- Reject Dialog -->

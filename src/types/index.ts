@@ -78,6 +78,7 @@ export interface PartnerOrder {
   itemsCount: number
   totalPrice: number
   deliveryFee: number
+  hasCourier: boolean
   createdAt: string
   acceptedAt?: string
   readyAt?: string
@@ -194,6 +195,14 @@ export interface GroceryProduct {
   categoryId: string
 }
 
+export interface EstablishmentAddress {
+  id: string
+  address: string
+  lat: number
+  lon: number
+  createdAt: string
+}
+
 export interface GroceryStoreProfile {
   id: string
   name: string
@@ -210,6 +219,7 @@ export interface GroceryStoreProfile {
   workingHours: Record<WeekDay, DaySchedule> | null
   deliveryTime: string | null
   minOrderAmount: number
+  addresses?: EstablishmentAddress[]
   createdAt: string
   updatedAt: string
 }
@@ -233,6 +243,7 @@ export interface RestaurantProfile {
   deliveryTime: string | null
   minOrderAmount: number
   cuisineTypes: string[]
+  addresses?: EstablishmentAddress[]
   createdAt: string
   updatedAt: string
 }

@@ -52,6 +52,12 @@ export const useRestaurantStore = defineStore('restaurant', () => {
     await updateRestaurant({ isOpen: !restaurant.value.isOpen })
   }
 
+  const $reset = () => {
+    restaurant.value = null
+    isLoading.value = false
+    isSaving.value = false
+  }
+
   return {
     restaurant,
     isLoading,
@@ -61,5 +67,6 @@ export const useRestaurantStore = defineStore('restaurant', () => {
     uploadImage,
     deleteImage,
     toggleOpen,
+    $reset,
   }
 })

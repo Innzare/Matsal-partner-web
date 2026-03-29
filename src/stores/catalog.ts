@@ -149,6 +149,14 @@ export const useCatalogStore = defineStore('catalog', () => {
     return updated
   }
 
+  const $reset = () => {
+    products.value = []
+    categories.value = []
+    selectedCategory.value = null
+    isLoading.value = false
+    searchQuery.value = ''
+  }
+
   return {
     products,
     categories,
@@ -173,5 +181,6 @@ export const useCatalogStore = defineStore('catalog', () => {
     deleteProductImage,
     uploadCategoryImage,
     deleteCategoryImage,
+    $reset,
   }
 })
